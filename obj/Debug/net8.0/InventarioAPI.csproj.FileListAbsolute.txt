@@ -27,10 +27,13 @@ C:\Users\allan\Documents\InventarioAPI\InventarioAPI\InventarioAPI\obj\Debug\net
 C:\Users\allan\Documents\InventarioAPI\InventarioAPI\InventarioAPI\obj\Debug\net8.0\staticwebassets\msbuild.buildMultiTargeting.InventarioAPI.props
 C:\Users\allan\Documents\InventarioAPI\InventarioAPI\InventarioAPI\obj\Debug\net8.0\staticwebassets\msbuild.buildTransitive.InventarioAPI.props
 C:\Users\allan\Documents\InventarioAPI\InventarioAPI\InventarioAPI\obj\Debug\net8.0\staticwebassets.pack.json
-C:\Users\allan\Documents\InventarioAPI\InventarioAPI\InventarioAPI\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt
 C:\Users\allan\Documents\InventarioAPI\InventarioAPI\InventarioAPI\obj\Debug\net8.0\Inventar.63A8EA75.Up2Date
 C:\Users\allan\Documents\InventarioAPI\InventarioAPI\InventarioAPI\obj\Debug\net8.0\InventarioAPI.dll
 C:\Users\allan\Documents\InventarioAPI\InventarioAPI\InventarioAPI\obj\Debug\net8.0\refint\InventarioAPI.dll
 C:\Users\allan\Documents\InventarioAPI\InventarioAPI\InventarioAPI\obj\Debug\net8.0\InventarioAPI.pdb
 C:\Users\allan\Documents\InventarioAPI\InventarioAPI\InventarioAPI\obj\Debug\net8.0\InventarioAPI.genruntimeconfig.cache
 C:\Users\allan\Documents\InventarioAPI\InventarioAPI\InventarioAPI\obj\Debug\net8.0\ref\InventarioAPI.dll
+C:\Users\allan\Documents\InventarioAPI\InventarioAPI\InventarioAPI\obj\Debug\net8.0\InventarioAPI.sourcelink.json
+C:\Users\allan\Documents\InventarioAPI\InventarioAPI\InventarioAPI\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.dll
+C:\Users\allan\Documents\InventarioAPI\InventarioAPI\InventarioAPI\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.Abstractions.dll
+C:\Users\allan\Documents\InventarioAPI\InventarioAPI\InventarioAPI\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.InMemory.dll

@@ -1,7 +1,14 @@
+using InventarioAPI.Data;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Controllers
 builder.Services.AddControllers();
+
+// EF Core InMemory (replace with real provider/connection when ready)
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseInMemoryDatabase("InventarioDb"));
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -15,7 +22,7 @@ if (!string.IsNullOrWhiteSpace(port))
 }
 
 // ===== CORS =====
-// Política por defecto (sin nombre) para que app.UseCors() aplique a todo.
+// Polï¿½tica por defecto (sin nombre) para que app.UseCors() aplique a todo.
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -37,7 +44,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Raíz y health
+// Raï¿½z y health
 app.MapGet("/", () => Results.Redirect("/swagger"));
 app.MapGet("/healthz", () => Results.Ok("Healthy"));
 
