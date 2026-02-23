@@ -9,6 +9,7 @@ namespace InventarioAPI.DTOs
         public string CodigoProducto { get; set; } = string.Empty;
         public string NombreProducto { get; set; } = string.Empty;
         public int CantidadSugerida { get; set; }
+        public int? ProveedorSugeridoId { get; set; }
         public string Estado { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; }
         public int? OrdenCompraId { get; set; }
@@ -18,12 +19,14 @@ namespace InventarioAPI.DTOs
     {
         public int ProductoId { get; set; }
         public int CantidadSugerida { get; set; }
+        public int? ProveedorSugeridoId { get; set; }
         public DateTime Timestamp { get; set; }
     }
 
     public class ReabastecimientoUpdateDto
     {
         public int CantidadSugerida { get; set; }
+        public int? ProveedorSugeridoId { get; set; }
         public string Estado { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; }
     }

@@ -3,6 +3,7 @@ using InventarioAPI.DTOs;
 using InventarioAPI.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using InventarioAPI.Services;
 
 namespace InventarioAPI.Controllers
 {
@@ -11,10 +12,12 @@ namespace InventarioAPI.Controllers
     public class ProductosController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly InventoryService _inventoryService;
 
-        public ProductosController(AppDbContext context)
+        public ProductosController(AppDbContext context, InventoryService inventoryService)
         {
             _context = context;
+            _inventoryService = inventoryService;
         }
 
         [HttpGet]
@@ -106,7 +109,20 @@ namespace InventarioAPI.Controllers
             producto.Descripcion = dto.Descripcion;
             producto.PrecioVenta = dto.PrecioVenta;
             producto.CostoUnitario = dto.CostoUnitario;
-            producto.StockActual = dto.StockActual;
+            // Handle stock changes through InventoryService so reabastecimientos/orders are created
+            var diferenciaStock = dto.StockActual - producto.StockActual;
+            if (diferenciaStock > 0)
+            {
+                var result = await _inventoryService.IncreaseStockAsync(producto.Id, diferenciaStock, dto.Timestamp);
+                if (!result.Success) return BadRequest(result.Error);
+            }
+            else if (diferenciaStock < 0)
+            {
+                var result = await _inventoryService.DecreaseStockAsync(producto.Id, (int)Math.Abs(diferenciaStock), dto.Timestamp);
+                if (!result.Success) return BadRequest(result.Error);
+            }
+
+            // Update minimo and other fields (stock actual ya fue actualizado por InventoryService)
             producto.StockMinimo = dto.StockMinimo;
             producto.Estado = dto.Estado;
             producto.CreadoPorId = dto.CreadoPorId;

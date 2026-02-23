@@ -26,6 +26,12 @@ namespace InventarioAPI.Models
         [ForeignKey(nameof(ProductoId))]
         public Producto? Producto { get; set; }
         
+        [Column("proveedor_sugerido_id")]
+        public int? ProveedorSugeridoId { get; set; }
+
+        [ForeignKey(nameof(ProveedorSugeridoId))]
+        public Proveedor? ProveedorSugerido { get; set; }
+
         [Column("orden_compra_id")]
         public int? OrdenCompraId { get; set; }
 

@@ -127,8 +127,7 @@ namespace InventarioAPI.Services
             _context.Reabastecimientos.Add(reabastecimiento);
             await _context.SaveChangesAsync();
 
-            // Create a suggested OrdenCompra linked to this reabastecimiento
-            // Ensure there is a valid proveedor to satisfy FK constraints.
+            // Determine a suggested proveedor for the reabastecimiento (may create a fallback proveedor)
             var proveedorId = await _context.Proveedores.Select(p => p.Id).FirstOrDefaultAsync();
             if (proveedorId == 0)
             {
@@ -147,48 +146,18 @@ namespace InventarioAPI.Services
                 proveedorId = proveedorFallback.Id;
             }
 
-            var orden = new OrdenCompra
-            {
-                ProveedorId = proveedorId,
-                Fecha = DateTime.UtcNow,
-                Estado = "Sugerida",
-                Timestamp = DateTime.UtcNow
-            };
-
-            _context.OrdenesCompras.Add(orden);
-            await _context.SaveChangesAsync();
-
-            var detalleOrden = new DetalleOrdenCompra
-            {
-                OrdenId = orden.Id,
-                ProductoId = producto.Id,
-                Cantidad = sugerida,
-                CostoUnitario = producto.CostoUnitario,
-                Timestamp = DateTime.UtcNow
-            };
-
-            _context.DetallesOrdenesCompras.Add(detalleOrden);
-
-            // Link reabastecimiento -> orden
-            reabastecimiento.OrdenCompraId = orden.Id;
+            // Attach suggested proveedor to the reabastecimiento but DO NOT create an OrdenCompra yet.
+            reabastecimiento.ProveedorSugeridoId = proveedorId;
             _context.Reabastecimientos.Update(reabastecimiento);
-
             await _context.SaveChangesAsync();
 
-            // Notify clients about new reabastecimiento and suggested order
+            // Notify clients that a reabastecimiento was created (with suggested proveedor), manager will approve to create the order
             await _hubContext.Clients.All.SendAsync("ReabastecimientoCreated", new
             {
                 ReabastecimientoId = reabastecimiento.Id,
                 ProductoId = producto.Id,
-                CantidadSugerida = reabastecimiento.CantidadSugerida
-            });
-
-            await _hubContext.Clients.All.SendAsync("OrdenSugeridaCreated", new
-            {
-                OrdenId = orden.Id,
-                ProductoId = producto.Id,
-                Cantidad = detalleOrden.Cantidad,
-                ProveedorId = orden.ProveedorId
+                CantidadSugerida = reabastecimiento.CantidadSugerida,
+                ProveedorSugeridoId = proveedorId
             });
         }
 
