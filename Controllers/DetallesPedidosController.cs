@@ -1,4 +1,5 @@
 using InventarioAPI.Data;
+using InventarioAPI.DTOs;
 using InventarioAPI.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,13 +18,14 @@ namespace InventarioAPI.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<DetallePedido>>> GetDetallesPedidos()
+        public async Task<ActionResult<IEnumerable<DetallePedidoDto>>> GetDetallesPedidos()
         {
-            return await _context.DetallesPedidos.ToListAsync();
+            var detalles = await _context.DetallesPedidos.ToListAsync();
+            return detalles.Select(ToDto).ToList();
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<DetallePedido>> GetDetallePedido(int id)
+        public async Task<ActionResult<DetallePedidoDto>> GetDetallePedido(int id)
         {
             var detalle = await _context.DetallesPedidos.FindAsync(id);
             if (detalle == null)
@@ -31,32 +33,42 @@ namespace InventarioAPI.Controllers
                 return NotFound();
             }
 
-            return detalle;
+            return ToDto(detalle);
         }
 
         [HttpPost]
-        public async Task<ActionResult<DetallePedido>> PostDetallePedido(DetallePedido detallePedido)
+        public async Task<ActionResult<DetallePedidoDto>> PostDetallePedido([FromBody] DetallePedidoCreateDto dto)
         {
-            _context.DetallesPedidos.Add(detallePedido);
+            var detalle = new DetallePedido
+            {
+                PedidoId = dto.PedidoId,
+                ProductoId = dto.ProductoId,
+                Cantidad = dto.Cantidad,
+                PrecioUnitario = dto.PrecioUnitario,
+                Timestamp = dto.Timestamp
+            };
+
+            _context.DetallesPedidos.Add(detalle);
             await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetDetallePedido), new { id = detallePedido.Id }, detallePedido);
+
+            return CreatedAtAction(nameof(GetDetallePedido), new { id = detalle.Id }, ToDto(detalle));
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutDetallePedido(int id, DetallePedido detallePedido)
+        public async Task<IActionResult> PutDetallePedido(int id, [FromBody] DetallePedidoUpdateDto dto)
         {
-            if (id != detallePedido.Id)
-            {
-                return BadRequest();
-            }
-
-            var exists = await _context.DetallesPedidos.AnyAsync(d => d.Id == id);
-            if (!exists)
+            var detalle = await _context.DetallesPedidos.FindAsync(id);
+            if (detalle == null)
             {
                 return NotFound();
             }
 
-            _context.Entry(detallePedido).State = EntityState.Modified;
+            detalle.PedidoId = dto.PedidoId;
+            detalle.ProductoId = dto.ProductoId;
+            detalle.Cantidad = dto.Cantidad;
+            detalle.PrecioUnitario = dto.PrecioUnitario;
+            detalle.Timestamp = dto.Timestamp;
+
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -73,6 +85,19 @@ namespace InventarioAPI.Controllers
             _context.DetallesPedidos.Remove(detalle);
             await _context.SaveChangesAsync();
             return NoContent();
+        }
+
+        private static DetallePedidoDto ToDto(DetallePedido detalle)
+        {
+            return new DetallePedidoDto
+            {
+                Id = detalle.Id,
+                PedidoId = detalle.PedidoId,
+                ProductoId = detalle.ProductoId,
+                Cantidad = detalle.Cantidad,
+                PrecioUnitario = detalle.PrecioUnitario,
+                Timestamp = detalle.Timestamp
+            };
         }
     }
 }

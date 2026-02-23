@@ -1,4 +1,5 @@
 using InventarioAPI.Data;
+using InventarioAPI.DTOs;
 using InventarioAPI.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,13 +18,14 @@ namespace InventarioAPI.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Cliente>>> GetClientes()
+        public async Task<ActionResult<IEnumerable<ClienteDto>>> GetClientes()
         {
-            return await _context.Clientes.ToListAsync();
+            var clientes = await _context.Clientes.ToListAsync();
+            return clientes.Select(ToDto).ToList();
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Cliente>> GetCliente(int id)
+        public async Task<ActionResult<ClienteDto>> GetCliente(int id)
         {
             var cliente = await _context.Clientes.FindAsync(id);
             if (cliente == null)
@@ -31,32 +33,44 @@ namespace InventarioAPI.Controllers
                 return NotFound();
             }
 
-            return cliente;
+            return ToDto(cliente);
         }
 
         [HttpPost]
-        public async Task<ActionResult<Cliente>> PostCliente(Cliente cliente)
+        public async Task<ActionResult<ClienteDto>> PostCliente([FromBody] ClienteCreateDto dto)
         {
+            var cliente = new Cliente
+            {
+                Nombre = dto.Nombre,
+                Apellido = dto.Apellido,
+                Direccion = dto.Direccion,
+                Telefono = dto.Telefono,
+                Email = dto.Email,
+                Timestamp = dto.Timestamp
+            };
+
             _context.Clientes.Add(cliente);
             await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetCliente), new { id = cliente.Id }, cliente);
+
+            return CreatedAtAction(nameof(GetCliente), new { id = cliente.Id }, ToDto(cliente));
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutCliente(int id, Cliente cliente)
+        public async Task<IActionResult> PutCliente(int id, [FromBody] ClienteUpdateDto dto)
         {
-            if (id != cliente.Id)
-            {
-                return BadRequest();
-            }
-
-            var exists = await _context.Clientes.AnyAsync(c => c.Id == id);
-            if (!exists)
+            var cliente = await _context.Clientes.FindAsync(id);
+            if (cliente == null)
             {
                 return NotFound();
             }
 
-            _context.Entry(cliente).State = EntityState.Modified;
+            cliente.Nombre = dto.Nombre;
+            cliente.Apellido = dto.Apellido;
+            cliente.Direccion = dto.Direccion;
+            cliente.Telefono = dto.Telefono;
+            cliente.Email = dto.Email;
+            cliente.Timestamp = dto.Timestamp;
+
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -73,6 +87,20 @@ namespace InventarioAPI.Controllers
             _context.Clientes.Remove(cliente);
             await _context.SaveChangesAsync();
             return NoContent();
+        }
+
+        private static ClienteDto ToDto(Cliente cliente)
+        {
+            return new ClienteDto
+            {
+                Id = cliente.Id,
+                Nombre = cliente.Nombre,
+                Apellido = cliente.Apellido,
+                Direccion = cliente.Direccion,
+                Telefono = cliente.Telefono,
+                Email = cliente.Email,
+                Timestamp = cliente.Timestamp
+            };
         }
     }
 }

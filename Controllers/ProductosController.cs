@@ -1,4 +1,5 @@
 using InventarioAPI.Data;
+using InventarioAPI.DTOs;
 using InventarioAPI.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,13 +18,14 @@ namespace InventarioAPI.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Producto>>> GetProductos()
+        public async Task<ActionResult<IEnumerable<ProductoDto>>> GetProductos()
         {
-            return await _context.Productos.ToListAsync();
+            var productos = await _context.Productos.ToListAsync();
+            return productos.Select(ToDto).ToList();
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Producto>> GetProducto(int id)
+        public async Task<ActionResult<ProductoDto>> GetProducto(int id)
         {
             var producto = await _context.Productos.FindAsync(id);
             if (producto == null)
@@ -31,32 +33,50 @@ namespace InventarioAPI.Controllers
                 return NotFound();
             }
 
-            return producto;
+            return ToDto(producto);
         }
 
         [HttpPost]
-        public async Task<ActionResult<Producto>> PostProducto(Producto producto)
+        public async Task<ActionResult<ProductoDto>> PostProducto([FromBody] ProductoCreateDto dto)
         {
+            var producto = new Producto
+            {
+                Nombre = dto.Nombre,
+                Descripcion = dto.Descripcion,
+                PrecioVenta = dto.PrecioVenta,
+                CostoUnitario = dto.CostoUnitario,
+                StockActual = dto.StockActual,
+                StockMinimo = dto.StockMinimo,
+                Estado = dto.Estado,
+                CreadoPorId = dto.CreadoPorId,
+                Timestamp = dto.Timestamp
+            };
+
             _context.Productos.Add(producto);
             await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetProducto), new { id = producto.Id }, producto);
+
+            return CreatedAtAction(nameof(GetProducto), new { id = producto.Id }, ToDto(producto));
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutProducto(int id, Producto producto)
+        public async Task<IActionResult> PutProducto(int id, [FromBody] ProductoUpdateDto dto)
         {
-            if (id != producto.Id)
-            {
-                return BadRequest();
-            }
-
-            var exists = await _context.Productos.AnyAsync(p => p.Id == id);
-            if (!exists)
+            var producto = await _context.Productos.FindAsync(id);
+            if (producto == null)
             {
                 return NotFound();
             }
 
-            _context.Entry(producto).State = EntityState.Modified;
+            producto.Nombre = dto.Nombre;
+            producto.Descripcion = dto.Descripcion;
+            producto.PrecioVenta = dto.PrecioVenta;
+            producto.CostoUnitario = dto.CostoUnitario;
+            producto.StockActual = dto.StockActual;
+            producto.StockMinimo = dto.StockMinimo;
+            producto.Estado = dto.Estado;
+            producto.CreadoPorId = dto.CreadoPorId;
+            producto.Timestamp = dto.Timestamp;
+
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -73,6 +93,23 @@ namespace InventarioAPI.Controllers
             _context.Productos.Remove(producto);
             await _context.SaveChangesAsync();
             return NoContent();
+        }
+
+        private static ProductoDto ToDto(Producto producto)
+        {
+            return new ProductoDto
+            {
+                Id = producto.Id,
+                Nombre = producto.Nombre,
+                Descripcion = producto.Descripcion,
+                PrecioVenta = producto.PrecioVenta,
+                CostoUnitario = producto.CostoUnitario,
+                StockActual = producto.StockActual,
+                StockMinimo = producto.StockMinimo,
+                Estado = producto.Estado,
+                CreadoPorId = producto.CreadoPorId,
+                Timestamp = producto.Timestamp
+            };
         }
     }
 }

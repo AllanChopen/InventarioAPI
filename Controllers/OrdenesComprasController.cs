@@ -1,4 +1,5 @@
 using InventarioAPI.Data;
+using InventarioAPI.DTOs;
 using InventarioAPI.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,13 +18,14 @@ namespace InventarioAPI.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<OrdenCompra>>> GetOrdenesCompras()
+        public async Task<ActionResult<IEnumerable<OrdenCompraDto>>> GetOrdenesCompras()
         {
-            return await _context.OrdenesCompras.ToListAsync();
+            var ordenes = await _context.OrdenesCompras.ToListAsync();
+            return ordenes.Select(ToDto).ToList();
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<OrdenCompra>> GetOrdenCompra(int id)
+        public async Task<ActionResult<OrdenCompraDto>> GetOrdenCompra(int id)
         {
             var orden = await _context.OrdenesCompras.FindAsync(id);
             if (orden == null)
@@ -31,32 +33,40 @@ namespace InventarioAPI.Controllers
                 return NotFound();
             }
 
-            return orden;
+            return ToDto(orden);
         }
 
         [HttpPost]
-        public async Task<ActionResult<OrdenCompra>> PostOrdenCompra(OrdenCompra ordenCompra)
+        public async Task<ActionResult<OrdenCompraDto>> PostOrdenCompra([FromBody] OrdenCompraCreateDto dto)
         {
-            _context.OrdenesCompras.Add(ordenCompra);
+            var orden = new OrdenCompra
+            {
+                ProveedorId = dto.ProveedorId,
+                Fecha = dto.Fecha,
+                Estado = dto.Estado,
+                Timestamp = dto.Timestamp
+            };
+
+            _context.OrdenesCompras.Add(orden);
             await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetOrdenCompra), new { id = ordenCompra.Id }, ordenCompra);
+
+            return CreatedAtAction(nameof(GetOrdenCompra), new { id = orden.Id }, ToDto(orden));
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutOrdenCompra(int id, OrdenCompra ordenCompra)
+        public async Task<IActionResult> PutOrdenCompra(int id, [FromBody] OrdenCompraUpdateDto dto)
         {
-            if (id != ordenCompra.Id)
-            {
-                return BadRequest();
-            }
-
-            var exists = await _context.OrdenesCompras.AnyAsync(o => o.Id == id);
-            if (!exists)
+            var orden = await _context.OrdenesCompras.FindAsync(id);
+            if (orden == null)
             {
                 return NotFound();
             }
 
-            _context.Entry(ordenCompra).State = EntityState.Modified;
+            orden.ProveedorId = dto.ProveedorId;
+            orden.Fecha = dto.Fecha;
+            orden.Estado = dto.Estado;
+            orden.Timestamp = dto.Timestamp;
+
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -73,6 +83,18 @@ namespace InventarioAPI.Controllers
             _context.OrdenesCompras.Remove(orden);
             await _context.SaveChangesAsync();
             return NoContent();
+        }
+
+        private static OrdenCompraDto ToDto(OrdenCompra orden)
+        {
+            return new OrdenCompraDto
+            {
+                Id = orden.Id,
+                ProveedorId = orden.ProveedorId,
+                Fecha = orden.Fecha,
+                Estado = orden.Estado,
+                Timestamp = orden.Timestamp
+            };
         }
     }
 }

@@ -6,9 +6,11 @@ var builder = WebApplication.CreateBuilder(args);
 // Controllers
 builder.Services.AddControllers();
 
-// EF Core InMemory (replace with real provider/connection when ready)
+// EF Core PostgreSQL
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseInMemoryDatabase("InventarioDb"));
+    options.UseNpgsql(connectionString));
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
