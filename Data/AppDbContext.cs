@@ -18,5 +18,6 @@ namespace InventarioAPI.Data
         public DbSet<DetalleOrdenCompra> DetallesOrdenesCompras => Set<DetalleOrdenCompra>();
         public DbSet<PedidoCliente> PedidosClientes => Set<PedidoCliente>();
         public DbSet<DetallePedido> DetallesPedidos => Set<DetallePedido>();
+        public DbSet<Reabastecimiento> Reabastecimientos => Set<Reabastecimiento>();
     }
 }

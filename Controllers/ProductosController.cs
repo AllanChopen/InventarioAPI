@@ -18,9 +18,38 @@ namespace InventarioAPI.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ProductoDto>>> GetProductos()
+        public async Task<ActionResult<IEnumerable<ProductoDto>>> GetProductos(
+            [FromQuery] string? search,
+            [FromQuery] string? categoria,
+            [FromQuery] string? ubicacion,
+            [FromQuery] bool? soloBajoStock)
         {
-            var productos = await _context.Productos.ToListAsync();
+            var query = _context.Productos.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.ToLower();
+                query = query.Where(p => p.Nombre.ToLower().Contains(term) || p.Codigo.ToLower().Contains(term));
+            }
+
+            if (!string.IsNullOrWhiteSpace(categoria))
+            {
+                var cat = categoria.ToLower();
+                query = query.Where(p => p.Categoria.ToLower().Contains(cat));
+            }
+
+            if (!string.IsNullOrWhiteSpace(ubicacion))
+            {
+                var ubi = ubicacion.ToLower();
+                query = query.Where(p => p.Ubicacion.ToLower().Contains(ubi));
+            }
+
+            if (soloBajoStock == true)
+            {
+                query = query.Where(p => p.StockActual <= p.StockMinimo);
+            }
+
+            var productos = await query.ToListAsync();
             return productos.Select(ToDto).ToList();
         }
 
@@ -42,6 +71,9 @@ namespace InventarioAPI.Controllers
             var producto = new Producto
             {
                 Nombre = dto.Nombre,
+                Codigo = dto.Codigo,
+                Categoria = dto.Categoria,
+                Ubicacion = dto.Ubicacion,
                 Descripcion = dto.Descripcion,
                 PrecioVenta = dto.PrecioVenta,
                 CostoUnitario = dto.CostoUnitario,
@@ -68,6 +100,9 @@ namespace InventarioAPI.Controllers
             }
 
             producto.Nombre = dto.Nombre;
+            producto.Codigo = dto.Codigo;
+            producto.Categoria = dto.Categoria;
+            producto.Ubicacion = dto.Ubicacion;
             producto.Descripcion = dto.Descripcion;
             producto.PrecioVenta = dto.PrecioVenta;
             producto.CostoUnitario = dto.CostoUnitario;
@@ -97,10 +132,16 @@ namespace InventarioAPI.Controllers
 
         private static ProductoDto ToDto(Producto producto)
         {
+            var stockBajo = producto.StockActual <= producto.StockMinimo;
+            var nivel = stockBajo ? "bajo" : "ok";
+
             return new ProductoDto
             {
                 Id = producto.Id,
                 Nombre = producto.Nombre,
+                Codigo = producto.Codigo,
+                Categoria = producto.Categoria,
+                Ubicacion = producto.Ubicacion,
                 Descripcion = producto.Descripcion,
                 PrecioVenta = producto.PrecioVenta,
                 CostoUnitario = producto.CostoUnitario,
@@ -108,7 +149,9 @@ namespace InventarioAPI.Controllers
                 StockMinimo = producto.StockMinimo,
                 Estado = producto.Estado,
                 CreadoPorId = producto.CreadoPorId,
-                Timestamp = producto.Timestamp
+                Timestamp = producto.Timestamp,
+                StockBajo = stockBajo,
+                NivelInventario = nivel
             };
         }
     }

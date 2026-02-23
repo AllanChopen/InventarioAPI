@@ -4,8 +4,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace InventarioAPI.Models
 {
-    [Table("movimientos")]
-    public class Movimiento
+    [Table("reabastecimientos")]
+    public class Reabastecimiento
     {
         [Key]
         [Column("id")]
@@ -14,11 +14,11 @@ namespace InventarioAPI.Models
         [Column("producto_id")]
         public int ProductoId { get; set; }
 
-        [Column("tipo")]
-        public string Tipo { get; set; } = string.Empty;
+        [Column("cantidad_sugerida")]
+        public int CantidadSugerida { get; set; }
 
-        [Column("cantidad")]
-        public int Cantidad { get; set; }
+        [Column("estado")]
+        public string Estado { get; set; } = "Pendiente"; // Pendiente, Aprobada, Cancelada
 
         [Column("timestamp")]
         public DateTime Timestamp { get; set; }

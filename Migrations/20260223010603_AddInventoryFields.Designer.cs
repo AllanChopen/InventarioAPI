@@ -3,6 +3,7 @@ using System;
 using InventarioAPI.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace InventarioAPI.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260223010603_AddInventoryFields")]
+    partial class AddInventoryFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -354,39 +357,6 @@ namespace InventarioAPI.Migrations
                     b.ToTable("proveedores");
                 });
 
-            modelBuilder.Entity("InventarioAPI.Models.Reabastecimiento", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CantidadSugerida")
-                        .HasColumnType("integer")
-                        .HasColumnName("cantidad_sugerida");
-
-                    b.Property<string>("Estado")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("estado");
-
-                    b.Property<int>("ProductoId")
-                        .HasColumnType("integer")
-                        .HasColumnName("producto_id");
-
-                    b.Property<DateTime>("Timestamp")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("timestamp");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProductoId");
-
-                    b.ToTable("reabastecimientos");
-                });
-
             modelBuilder.Entity("InventarioAPI.Models.Usuario", b =>
                 {
                     b.Property<int>("Id")
@@ -505,17 +475,6 @@ namespace InventarioAPI.Migrations
                         .IsRequired();
 
                     b.Navigation("CreadoPor");
-                });
-
-            modelBuilder.Entity("InventarioAPI.Models.Reabastecimiento", b =>
-                {
-                    b.HasOne("InventarioAPI.Models.Producto", "Producto")
-                        .WithMany()
-                        .HasForeignKey("ProductoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Producto");
                 });
 
             modelBuilder.Entity("InventarioAPI.Models.Cliente", b =>

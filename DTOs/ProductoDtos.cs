@@ -6,6 +6,9 @@ namespace InventarioAPI.DTOs
     {
         public int Id { get; set; }
         public string Nombre { get; set; } = string.Empty;
+        public string Codigo { get; set; } = string.Empty;
+        public string Categoria { get; set; } = string.Empty;
+        public string Ubicacion { get; set; } = string.Empty;
         public string Descripcion { get; set; } = string.Empty;
         public decimal PrecioVenta { get; set; }
         public decimal CostoUnitario { get; set; }
@@ -14,11 +17,16 @@ namespace InventarioAPI.DTOs
         public bool Estado { get; set; }
         public int CreadoPorId { get; set; }
         public DateTime Timestamp { get; set; }
+        public bool StockBajo { get; set; }
+        public string NivelInventario { get; set; } = string.Empty;
     }
 
     public class ProductoCreateDto
     {
         public string Nombre { get; set; } = string.Empty;
+        public string Codigo { get; set; } = string.Empty;
+        public string Categoria { get; set; } = string.Empty;
+        public string Ubicacion { get; set; } = string.Empty;
         public string Descripcion { get; set; } = string.Empty;
         public decimal PrecioVenta { get; set; }
         public decimal CostoUnitario { get; set; }
@@ -32,6 +40,9 @@ namespace InventarioAPI.DTOs
     public class ProductoUpdateDto
     {
         public string Nombre { get; set; } = string.Empty;
+        public string Codigo { get; set; } = string.Empty;
+        public string Categoria { get; set; } = string.Empty;
+        public string Ubicacion { get; set; } = string.Empty;
         public string Descripcion { get; set; } = string.Empty;
         public decimal PrecioVenta { get; set; }
         public decimal CostoUnitario { get; set; }

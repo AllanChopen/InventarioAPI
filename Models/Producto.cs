@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 
 namespace InventarioAPI.Models
 {
+    [Index(nameof(Codigo), IsUnique = true)]
     [Table("productos")]
     public class Producto
     {
@@ -14,6 +16,15 @@ namespace InventarioAPI.Models
 
         [Column("nombre")]
         public string Nombre { get; set; } = string.Empty;
+
+        [Column("codigo")]
+        public string Codigo { get; set; } = string.Empty;
+
+        [Column("categoria")]
+        public string Categoria { get; set; } = string.Empty;
+
+        [Column("ubicacion")]
+        public string Ubicacion { get; set; } = string.Empty;
 
         [Column("descripcion")]
         public string Descripcion { get; set; } = string.Empty;
