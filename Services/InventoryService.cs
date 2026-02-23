@@ -128,9 +128,28 @@ namespace InventarioAPI.Services
             await _context.SaveChangesAsync();
 
             // Create a suggested OrdenCompra linked to this reabastecimiento
+            // Ensure there is a valid proveedor to satisfy FK constraints.
+            var proveedorId = await _context.Proveedores.Select(p => p.Id).FirstOrDefaultAsync();
+            if (proveedorId == 0)
+            {
+                var proveedorFallback = new Proveedor
+                {
+                    Nombre = "Proveedor Sugerido",
+                    Telefono = string.Empty,
+                    Email = string.Empty,
+                    Direccion = string.Empty,
+                    Estado = true,
+                    Timestamp = DateTime.UtcNow
+                };
+
+                _context.Proveedores.Add(proveedorFallback);
+                await _context.SaveChangesAsync();
+                proveedorId = proveedorFallback.Id;
+            }
+
             var orden = new OrdenCompra
             {
-                ProveedorId = 0, // unknown provider; frontend can update before approval
+                ProveedorId = proveedorId,
                 Fecha = DateTime.UtcNow,
                 Estado = "Sugerida",
                 Timestamp = DateTime.UtcNow
