@@ -12,6 +12,11 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+// Inventory service
+builder.Services.AddScoped<InventarioAPI.Services.InventoryService>();
+// SignalR
+builder.Services.AddSignalR();
+
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -45,6 +50,9 @@ app.UseCors();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Map SignalR hubs
+app.MapHub<InventarioAPI.Hubs.InventoryHub>("/hubs/inventory");
 
 // Ra�z y health
 app.MapGet("/", () => Results.Redirect("/swagger"));

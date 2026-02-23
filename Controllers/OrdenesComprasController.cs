@@ -18,22 +18,45 @@ namespace InventarioAPI.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<OrdenCompraDto>>> GetOrdenesCompras()
+        public async Task<ActionResult<IEnumerable<OrdenCompraDto>>> GetOrdenesCompras([FromQuery] bool? sugeridas)
         {
-            var ordenes = await _context.OrdenesCompras.ToListAsync();
+            var query = _context.OrdenesCompras.AsQueryable();
+            if (sugeridas == true)
+            {
+                query = query.Where(o => o.Estado == "Sugerida");
+            }
+
+            var ordenes = await query.ToListAsync();
             return ordenes.Select(ToDto).ToList();
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<OrdenCompraDto>> GetOrdenCompra(int id)
         {
-            var orden = await _context.OrdenesCompras.FindAsync(id);
+            var orden = await _context.OrdenesCompras
+                .Include(o => o.Detalles)
+                .ThenInclude(d => d.Producto)
+                .FirstOrDefaultAsync(o => o.Id == id);
+
             if (orden == null)
             {
                 return NotFound();
             }
 
-            return ToDto(orden);
+            var dto = ToDto(orden);
+            dto.Detalles = orden.Detalles.Select(d => new DTOs.DetalleOrdenCompraDto
+            {
+                Id = d.Id,
+                OrdenId = d.OrdenId,
+                ProductoId = d.ProductoId,
+                Cantidad = d.Cantidad,
+                CostoUnitario = d.CostoUnitario,
+                Timestamp = d.Timestamp,
+                CodigoProducto = d.Producto?.Codigo ?? string.Empty,
+                NombreProducto = d.Producto?.Nombre ?? string.Empty
+            }).ToList();
+
+            return dto;
         }
 
         [HttpPost]
@@ -82,6 +105,46 @@ namespace InventarioAPI.Controllers
 
             _context.OrdenesCompras.Remove(orden);
             await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
+        [HttpPost("{id}/aprobar")]
+        public async Task<IActionResult> Aprobar(int id)
+        {
+            var orden = await _context.OrdenesCompras.FindAsync(id);
+            if (orden == null)
+            {
+                return NotFound();
+            }
+
+            orden.Estado = "Aprobada";
+            orden.Timestamp = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
+        [HttpPost("{id}/cancelar")]
+        public async Task<IActionResult> CancelarOrden(int id)
+        {
+            var orden = await _context.OrdenesCompras.FindAsync(id);
+            if (orden == null)
+            {
+                return NotFound();
+            }
+
+            // Unlink from any reabastecimiento and mark reabastecimiento pending
+            var reab = await _context.Reabastecimientos.FirstOrDefaultAsync(r => r.OrdenCompraId == id);
+            if (reab != null)
+            {
+                reab.OrdenCompraId = null;
+                reab.Estado = "Pendiente";
+            }
+
+            orden.Estado = "Cancelada";
+            orden.Timestamp = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
             return NoContent();
         }
 

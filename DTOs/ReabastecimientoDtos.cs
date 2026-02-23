@@ -11,6 +11,7 @@ namespace InventarioAPI.DTOs
         public int CantidadSugerida { get; set; }
         public string Estado { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; }
+        public int? OrdenCompraId { get; set; }
     }
 
     public class ReabastecimientoCreateDto

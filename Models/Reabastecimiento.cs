@@ -25,5 +25,11 @@ namespace InventarioAPI.Models
 
         [ForeignKey(nameof(ProductoId))]
         public Producto? Producto { get; set; }
+        
+        [Column("orden_compra_id")]
+        public int? OrdenCompraId { get; set; }
+
+        [ForeignKey(nameof(OrdenCompraId))]
+        public OrdenCompra? OrdenCompra { get; set; }
     }
 }

@@ -9,6 +9,7 @@ namespace InventarioAPI.DTOs
         public DateTime Fecha { get; set; }
         public string Estado { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; }
+        public System.Collections.Generic.List<DetalleOrdenCompraDto> Detalles { get; set; } = new System.Collections.Generic.List<DetalleOrdenCompraDto>();
     }
 
     public class OrdenCompraCreateDto

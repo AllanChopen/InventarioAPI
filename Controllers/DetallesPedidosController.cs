@@ -11,10 +11,12 @@ namespace InventarioAPI.Controllers
     public class DetallesPedidosController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly InventarioAPI.Services.InventoryService _inventoryService;
 
-        public DetallesPedidosController(AppDbContext context)
+        public DetallesPedidosController(AppDbContext context, InventarioAPI.Services.InventoryService inventoryService)
         {
             _context = context;
+            _inventoryService = inventoryService;
         }
 
         [HttpGet]
@@ -39,6 +41,14 @@ namespace InventarioAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<DetallePedidoDto>> PostDetallePedido([FromBody] DetallePedidoCreateDto dto)
         {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+
+            var decrease = await _inventoryService.DecreaseStockAsync(dto.ProductoId, dto.Cantidad, dto.Timestamp);
+            if (!decrease.Success)
+            {
+                return BadRequest(decrease.Error);
+            }
+
             var detalle = new DetallePedido
             {
                 PedidoId = dto.PedidoId,
@@ -50,6 +60,8 @@ namespace InventarioAPI.Controllers
 
             _context.DetallesPedidos.Add(detalle);
             await _context.SaveChangesAsync();
+
+            await transaction.CommitAsync();
 
             return CreatedAtAction(nameof(GetDetallePedido), new { id = detalle.Id }, ToDto(detalle));
         }

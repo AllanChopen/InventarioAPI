@@ -10,6 +10,8 @@ namespace InventarioAPI.DTOs
         public int Cantidad { get; set; }
         public decimal CostoUnitario { get; set; }
         public DateTime Timestamp { get; set; }
+        public string CodigoProducto { get; set; } = string.Empty;
+        public string NombreProducto { get; set; } = string.Empty;
     }
 
     public class DetalleOrdenCompraCreateDto

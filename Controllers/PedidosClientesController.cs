@@ -11,10 +11,12 @@ namespace InventarioAPI.Controllers
     public class PedidosClientesController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly InventarioAPI.Services.InventoryService _inventoryService;
 
-        public PedidosClientesController(AppDbContext context)
+        public PedidosClientesController(AppDbContext context, InventarioAPI.Services.InventoryService inventoryService)
         {
             _context = context;
+            _inventoryService = inventoryService;
         }
 
         [HttpGet]
@@ -82,6 +84,103 @@ namespace InventarioAPI.Controllers
 
             _context.PedidosClientes.Remove(pedido);
             await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
+        [HttpPost("{id}/confirmar")]
+        public async Task<IActionResult> ConfirmarPedido(int id)
+        {
+            var pedido = await _context.PedidosClientes
+                .Include(p => p.Detalles)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (pedido == null)
+            {
+                return NotFound();
+            }
+
+            if (pedido.Estado.Equals("Confirmado", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest("Pedido ya confirmado.");
+            }
+
+            // Aggregate required quantities by producto to validate availability
+            var requeridos = pedido.Detalles
+                .GroupBy(d => d.ProductoId)
+                .ToDictionary(g => g.Key, g => g.Sum(d => d.Cantidad));
+
+            // Validate availability before making changes
+            foreach (var kv in requeridos)
+            {
+                var producto = await _context.Productos.FindAsync(kv.Key);
+                if (producto == null)
+                {
+                    return BadRequest($"Producto {kv.Key} no encontrado.");
+                }
+
+                if (producto.StockActual < kv.Value)
+                {
+                    return BadRequest($"Stock insuficiente para el producto {producto.Codigo} ({producto.Nombre}). Disponible: {producto.StockActual}, requerido: {kv.Value}.");
+                }
+            }
+
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+
+            // Decrement stock per detalle
+            foreach (var detalle in pedido.Detalles)
+            {
+                var res = await _inventoryService.DecreaseStockAsync(detalle.ProductoId, detalle.Cantidad, detalle.Timestamp);
+                if (!res.Success)
+                {
+                    await transaction.RollbackAsync();
+                    return BadRequest(res.Error);
+                }
+            }
+
+            pedido.Estado = "Confirmado";
+            pedido.Timestamp = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            await transaction.CommitAsync();
+
+            return NoContent();
+        }
+
+        [HttpPost("{id}/cancelar")]
+        public async Task<IActionResult> CancelarPedido(int id)
+        {
+            var pedido = await _context.PedidosClientes
+                .Include(p => p.Detalles)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (pedido == null)
+            {
+                return NotFound();
+            }
+
+            if (!pedido.Estado.Equals("Confirmado", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest("Solo pedidos confirmados pueden cancelarse.");
+            }
+
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+
+            foreach (var detalle in pedido.Detalles)
+            {
+                var res = await _inventoryService.IncreaseStockAsync(detalle.ProductoId, detalle.Cantidad, DateTime.UtcNow);
+                if (!res.Success)
+                {
+                    await transaction.RollbackAsync();
+                    return BadRequest(res.Error);
+                }
+            }
+
+            pedido.Estado = "Cancelado";
+            pedido.Timestamp = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            await transaction.CommitAsync();
+
             return NoContent();
         }
 

@@ -1,6 +1,7 @@
 using InventarioAPI.Data;
 using InventarioAPI.DTOs;
 using InventarioAPI.Models;
+using InventarioAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,10 +12,12 @@ namespace InventarioAPI.Controllers
     public class MovimientosController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly InventoryService _inventoryService;
 
-        public MovimientosController(AppDbContext context)
+        public MovimientosController(AppDbContext context, InventoryService inventoryService)
         {
             _context = context;
+            _inventoryService = inventoryService;
         }
 
         [HttpGet]
@@ -46,41 +49,28 @@ namespace InventarioAPI.Controllers
 
             await using var transaction = await _context.Database.BeginTransactionAsync();
 
-            var producto = await _context.Productos.FindAsync(dto.ProductoId);
-            if (producto == null)
-            {
-                return BadRequest("Producto no encontrado.");
-            }
-
-            var movimiento = new Movimiento
-            {
-                ProductoId = dto.ProductoId,
-                Tipo = dto.Tipo,
-                Cantidad = dto.Cantidad,
-                Timestamp = dto.Timestamp
-            };
-
             if (dto.Tipo.Equals("Entrada", StringComparison.OrdinalIgnoreCase))
             {
-                producto.StockActual += dto.Cantidad;
+                var result = await _inventoryService.IncreaseStockAsync(dto.ProductoId, dto.Cantidad, dto.Timestamp);
+                if (!result.Success) return BadRequest(result.Error);
             }
-            else if (dto.Tipo.Equals("Salida", StringComparison.OrdinalIgnoreCase))
+            else // Salida
             {
-                if (producto.StockActual - dto.Cantidad < 0)
-                {
-                    return BadRequest("Stock insuficiente para registrar la salida.");
-                }
-
-                producto.StockActual -= dto.Cantidad;
+                var result = await _inventoryService.DecreaseStockAsync(dto.ProductoId, dto.Cantidad, dto.Timestamp);
+                if (!result.Success) return BadRequest(result.Error);
             }
 
-            _context.Movimientos.Add(movimiento);
-            await _context.SaveChangesAsync();
-
-            // Trigger auto-replenishment suggestion if needed
-            await CrearReabastecimientoSiCorresponde(producto);
+            // Load the movimiento we just created to return it
+            var movimiento = await _context.Movimientos
+                .OrderByDescending(m => m.Id)
+                .FirstOrDefaultAsync(m => m.ProductoId == dto.ProductoId && m.Timestamp == dto.Timestamp && m.Cantidad == dto.Cantidad && m.Tipo == dto.Tipo);
 
             await transaction.CommitAsync();
+
+            if (movimiento == null)
+            {
+                return StatusCode(500, "No se pudo crear el movimiento.");
+            }
 
             return CreatedAtAction(nameof(GetMovimiento), new { id = movimiento.Id }, ToDto(movimiento));
         }
@@ -140,40 +130,6 @@ namespace InventarioAPI.Controllers
                    tipo.Equals("Salida", StringComparison.OrdinalIgnoreCase);
         }
 
-        private async Task CrearReabastecimientoSiCorresponde(Producto producto)
-        {
-            if (producto.StockActual > producto.StockMinimo)
-            {
-                return;
-            }
-
-            var yaPendiente = await _context.Reabastecimientos
-                .AnyAsync(r => r.ProductoId == producto.Id && r.Estado == "Pendiente");
-
-            if (yaPendiente)
-            {
-                return;
-            }
-
-            var sugerida = CalcularCantidadSugerida(producto);
-
-            var reabastecimiento = new Reabastecimiento
-            {
-                ProductoId = producto.Id,
-                CantidadSugerida = sugerida,
-                Estado = "Pendiente",
-                Timestamp = DateTime.UtcNow
-            };
-
-            _context.Reabastecimientos.Add(reabastecimiento);
-            await _context.SaveChangesAsync();
-        }
-
-        private static int CalcularCantidadSugerida(Producto producto)
-        {
-            var objetivo = Math.Max(producto.StockMinimo * 2, producto.StockMinimo + 1);
-            var sugerida = objetivo - producto.StockActual;
-            return sugerida <= 0 ? producto.StockMinimo : sugerida;
-        }
+        // Reabastecimiento logic moved to InventoryService to avoid duplication
     }
 }

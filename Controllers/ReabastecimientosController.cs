@@ -65,6 +65,9 @@ namespace InventarioAPI.Controllers
 
             await _context.Entry(entity).Reference(e => e.Producto).LoadAsync();
 
+            // Reload to include OrdenCompraId if set by InventoryService
+            await _context.Entry(entity).Reference(e => e.OrdenCompra).LoadAsync();
+
             return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ToDto(entity));
         }
 
@@ -125,7 +128,8 @@ namespace InventarioAPI.Controllers
                 NombreProducto = r.Producto?.Nombre ?? string.Empty,
                 CantidadSugerida = r.CantidadSugerida,
                 Estado = r.Estado,
-                Timestamp = r.Timestamp
+                Timestamp = r.Timestamp,
+                OrdenCompraId = r.OrdenCompraId
             };
         }
     }

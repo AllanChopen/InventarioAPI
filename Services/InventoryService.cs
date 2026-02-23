@@ -1,0 +1,183 @@
+using InventarioAPI.Data;
+using InventarioAPI.Models;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
+using InventarioAPI.Hubs;
+
+namespace InventarioAPI.Services
+{
+    public class InventoryService
+    {
+        private readonly AppDbContext _context;
+        private readonly IHubContext<InventoryHub> _hubContext;
+
+        public InventoryService(AppDbContext context, IHubContext<InventoryHub> hubContext)
+        {
+            _context = context;
+            _hubContext = hubContext;
+        }
+
+        public async Task<(bool Success, string? Error)> DecreaseStockAsync(int productoId, int cantidad, DateTime timestamp)
+        {
+            var producto = await _context.Productos.FindAsync(productoId);
+            if (producto == null)
+            {
+                return (false, "Producto no encontrado.");
+            }
+
+            if (cantidad <= 0)
+            {
+                return (false, "Cantidad debe ser mayor que cero.");
+            }
+
+            if (producto.StockActual - cantidad < 0)
+            {
+                return (false, "Stock insuficiente para registrar la salida.");
+            }
+
+            producto.StockActual -= cantidad;
+
+            var movimiento = new Movimiento
+            {
+                ProductoId = productoId,
+                Tipo = "Salida",
+                Cantidad = cantidad,
+                Timestamp = timestamp
+            };
+
+            _context.Movimientos.Add(movimiento);
+            await _context.SaveChangesAsync();
+
+            await _hubContext.Clients.All.SendAsync("StockChanged", new
+            {
+                ProductoId = producto.Id,
+                StockActual = producto.StockActual,
+                StockMinimo = producto.StockMinimo,
+                StockBajo = producto.StockActual <= producto.StockMinimo
+            });
+
+            await CrearReabastecimientoSiCorresponde(producto);
+
+            return (true, null);
+        }
+
+        public async Task<(bool Success, string? Error)> IncreaseStockAsync(int productoId, int cantidad, DateTime timestamp)
+        {
+            var producto = await _context.Productos.FindAsync(productoId);
+            if (producto == null)
+            {
+                return (false, "Producto no encontrado.");
+            }
+
+            if (cantidad <= 0)
+            {
+                return (false, "Cantidad debe ser mayor que cero.");
+            }
+
+            producto.StockActual += cantidad;
+
+            var movimiento = new Movimiento
+            {
+                ProductoId = productoId,
+                Tipo = "Entrada",
+                Cantidad = cantidad,
+                Timestamp = timestamp
+            };
+
+            _context.Movimientos.Add(movimiento);
+            await _context.SaveChangesAsync();
+
+            await _hubContext.Clients.All.SendAsync("StockChanged", new
+            {
+                ProductoId = producto.Id,
+                StockActual = producto.StockActual,
+                StockMinimo = producto.StockMinimo,
+                StockBajo = producto.StockActual <= producto.StockMinimo
+            });
+
+            return (true, null);
+        }
+
+        private async Task CrearReabastecimientoSiCorresponde(Producto producto)
+        {
+            if (producto.StockActual > producto.StockMinimo)
+            {
+                return;
+            }
+
+            var yaPendiente = await _context.Reabastecimientos
+                .AnyAsync(r => r.ProductoId == producto.Id && r.Estado == "Pendiente");
+
+            if (yaPendiente)
+            {
+                return;
+            }
+
+            var sugerida = CalcularCantidadSugerida(producto);
+
+            var reabastecimiento = new Reabastecimiento
+            {
+                ProductoId = producto.Id,
+                CantidadSugerida = sugerida,
+                Estado = "Pendiente",
+                Timestamp = DateTime.UtcNow
+            };
+
+            // Create reabastecimiento
+            _context.Reabastecimientos.Add(reabastecimiento);
+            await _context.SaveChangesAsync();
+
+            // Create a suggested OrdenCompra linked to this reabastecimiento
+            var orden = new OrdenCompra
+            {
+                ProveedorId = 0, // unknown provider; frontend can update before approval
+                Fecha = DateTime.UtcNow,
+                Estado = "Sugerida",
+                Timestamp = DateTime.UtcNow
+            };
+
+            _context.OrdenesCompras.Add(orden);
+            await _context.SaveChangesAsync();
+
+            var detalleOrden = new DetalleOrdenCompra
+            {
+                OrdenId = orden.Id,
+                ProductoId = producto.Id,
+                Cantidad = sugerida,
+                CostoUnitario = producto.CostoUnitario,
+                Timestamp = DateTime.UtcNow
+            };
+
+            _context.DetallesOrdenesCompras.Add(detalleOrden);
+
+            // Link reabastecimiento -> orden
+            reabastecimiento.OrdenCompraId = orden.Id;
+            _context.Reabastecimientos.Update(reabastecimiento);
+
+            await _context.SaveChangesAsync();
+
+            // Notify clients about new reabastecimiento and suggested order
+            await _hubContext.Clients.All.SendAsync("ReabastecimientoCreated", new
+            {
+                ReabastecimientoId = reabastecimiento.Id,
+                ProductoId = producto.Id,
+                CantidadSugerida = reabastecimiento.CantidadSugerida
+            });
+
+            await _hubContext.Clients.All.SendAsync("OrdenSugeridaCreated", new
+            {
+                OrdenId = orden.Id,
+                ProductoId = producto.Id,
+                Cantidad = detalleOrden.Cantidad,
+                ProveedorId = orden.ProveedorId
+            });
+        }
+
+        private static int CalcularCantidadSugerida(Producto producto)
+        {
+            var objetivo = Math.Max(producto.StockMinimo * 2, producto.StockMinimo + 1);
+            var sugerida = objetivo - producto.StockActual;
+            return sugerida <= 0 ? producto.StockMinimo : sugerida;
+        }
+    }
+}
