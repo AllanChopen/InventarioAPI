@@ -36,6 +36,16 @@ namespace InventarioAPI.Controllers
             return ToDto(proveedor);
         }
 
+        [HttpGet("nombre/{nombre}")]
+        public async Task<ActionResult<IEnumerable<ProveedorDto>>> GetProveedoresByNombre(string nombre)
+        {
+            var proveedores = await _context.Proveedores
+                .Where(p => p.Nombre.ToLower() == nombre.ToLower())
+                .ToListAsync();
+
+            return proveedores.Select(ToDto).ToList();
+        }
+
         [HttpPost]
         public async Task<ActionResult<ProveedorDto>> PostProveedor([FromBody] ProveedorCreateDto dto)
         {
