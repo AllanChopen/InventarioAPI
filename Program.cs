@@ -29,7 +29,6 @@ if (!string.IsNullOrWhiteSpace(port))
 }
 
 // ===== CORS =====
-// Pol�tica por defecto (sin nombre) para que app.UseCors() aplique a todo.
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>

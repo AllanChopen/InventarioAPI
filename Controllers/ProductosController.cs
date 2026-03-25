@@ -27,33 +27,92 @@ namespace InventarioAPI.Controllers
             [FromQuery] string? ubicacion,
             [FromQuery] bool? soloBajoStock)
         {
-            var query = _context.Productos.AsQueryable();
-
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                var term = search.ToLower();
-                query = query.Where(p => p.Nombre.ToLower().Contains(term) || p.Codigo.ToLower().Contains(term));
-            }
-
-            if (!string.IsNullOrWhiteSpace(categoria))
-            {
-                var cat = categoria.ToLower();
-                query = query.Where(p => p.Categoria.ToLower().Contains(cat));
-            }
-
-            if (!string.IsNullOrWhiteSpace(ubicacion))
-            {
-                var ubi = ubicacion.ToLower();
-                query = query.Where(p => p.Ubicacion.ToLower().Contains(ubi));
-            }
-
-            if (soloBajoStock == true)
-            {
-                query = query.Where(p => p.StockActual <= p.StockMinimo);
-            }
+            var query = ApplyProductosFilters(_context.Productos.AsQueryable(), search, categoria, ubicacion, soloBajoStock);
 
             var productos = await query.ToListAsync();
             return productos.Select(ToDto).ToList();
+        }
+
+        [HttpGet("resumen")]
+        public async Task<ActionResult<ProductosResumenDto>> GetResumenProductos(
+            [FromQuery] string? search,
+            [FromQuery] string? categoria,
+            [FromQuery] string? ubicacion,
+            [FromQuery] bool? soloBajoStock)
+        {
+            var query = ApplyProductosFilters(_context.Productos.AsQueryable(), search, categoria, ubicacion, soloBajoStock);
+
+            var resumen = new ProductosResumenDto
+            {
+                TotalProductos = await query.CountAsync(),
+                UnidadesTotales = await query.SumAsync(p => (int?)p.StockActual) ?? 0,
+                ProductosBajoStock = await query.CountAsync(p => p.StockActual <= p.StockMinimo),
+                ValorInventarioCosto = await query.SumAsync(p => (decimal?)p.StockActual * p.CostoUnitario) ?? 0,
+                ValorInventarioVenta = await query.SumAsync(p => (decimal?)p.StockActual * p.PrecioVenta) ?? 0,
+                GeneratedAt = DateTime.UtcNow
+            };
+
+            return resumen;
+        }
+
+        [HttpGet("mas-vendidos")]
+        public async Task<ActionResult<IEnumerable<ProductoMasVendidoDto>>> GetProductosMasVendidos(
+            [FromQuery] int top = 10,
+            [FromQuery] DateTime? desde = null,
+            [FromQuery] DateTime? hasta = null)
+        {
+            if (top <= 0)
+            {
+                return BadRequest("El parámetro top debe ser mayor a 0.");
+            }
+
+            if (top > 100)
+            {
+                top = 100;
+            }
+
+            var query = from d in _context.DetallesPedidos
+                        join p in _context.PedidosClientes on d.PedidoId equals p.Id
+                        join pr in _context.Productos on d.ProductoId equals pr.Id
+                        where p.Estado.ToLower() == "entregado"
+                        select new { Detalle = d, Pedido = p, Producto = pr };
+
+            if (desde.HasValue)
+            {
+                var desdeUtc = desde.Value.ToUniversalTime();
+                query = query.Where(x => x.Pedido.Timestamp >= desdeUtc);
+            }
+
+            if (hasta.HasValue)
+            {
+                var hastaUtc = hasta.Value.ToUniversalTime();
+                query = query.Where(x => x.Pedido.Timestamp <= hastaUtc);
+            }
+
+            var result = await query
+                .GroupBy(x => new
+                {
+                    x.Producto.Id,
+                    x.Producto.Nombre,
+                    x.Producto.Codigo,
+                    x.Producto.Categoria
+                })
+                .Select(g => new ProductoMasVendidoDto
+                {
+                    ProductoId = g.Key.Id,
+                    Nombre = g.Key.Nombre,
+                    Codigo = g.Key.Codigo,
+                    Categoria = g.Key.Categoria,
+                    CantidadVendida = g.Sum(x => x.Detalle.Cantidad),
+                    IngresoTotal = g.Sum(x => x.Detalle.Cantidad * x.Detalle.PrecioUnitario),
+                    TotalPedidos = g.Select(x => x.Pedido.Id).Distinct().Count()
+                })
+                .OrderByDescending(x => x.CantidadVendida)
+                .ThenBy(x => x.Nombre)
+                .Take(top)
+                .ToListAsync();
+
+            return result;
         }
 
         [HttpGet("{id}")]
@@ -169,6 +228,39 @@ namespace InventarioAPI.Controllers
                 StockBajo = stockBajo,
                 NivelInventario = nivel
             };
+        }
+
+        private static IQueryable<Producto> ApplyProductosFilters(
+            IQueryable<Producto> query,
+            string? search,
+            string? categoria,
+            string? ubicacion,
+            bool? soloBajoStock)
+        {
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.ToLower();
+                query = query.Where(p => p.Nombre.ToLower().Contains(term) || p.Codigo.ToLower().Contains(term));
+            }
+
+            if (!string.IsNullOrWhiteSpace(categoria))
+            {
+                var cat = categoria.ToLower();
+                query = query.Where(p => p.Categoria.ToLower().Contains(cat));
+            }
+
+            if (!string.IsNullOrWhiteSpace(ubicacion))
+            {
+                var ubi = ubicacion.ToLower();
+                query = query.Where(p => p.Ubicacion.ToLower().Contains(ubi));
+            }
+
+            if (soloBajoStock == true)
+            {
+                query = query.Where(p => p.StockActual <= p.StockMinimo);
+            }
+
+            return query;
         }
     }
 }

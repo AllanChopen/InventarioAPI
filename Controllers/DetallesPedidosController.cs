@@ -11,25 +11,27 @@ namespace InventarioAPI.Controllers
     public class DetallesPedidosController : ControllerBase
     {
         private readonly AppDbContext _context;
-        private readonly InventarioAPI.Services.InventoryService _inventoryService;
 
-        public DetallesPedidosController(AppDbContext context, InventarioAPI.Services.InventoryService inventoryService)
+        public DetallesPedidosController(AppDbContext context)
         {
             _context = context;
-            _inventoryService = inventoryService;
         }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<DetallePedidoDto>>> GetDetallesPedidos()
         {
-            var detalles = await _context.DetallesPedidos.ToListAsync();
+            var detalles = await _context.DetallesPedidos
+                .Include(d => d.Producto)
+                .ToListAsync();
             return detalles.Select(ToDto).ToList();
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<DetallePedidoDto>> GetDetallePedido(int id)
         {
-            var detalle = await _context.DetallesPedidos.FindAsync(id);
+            var detalle = await _context.DetallesPedidos
+                .Include(d => d.Producto)
+                .FirstOrDefaultAsync(d => d.Id == id);
             if (detalle == null)
             {
                 return NotFound();
@@ -41,12 +43,22 @@ namespace InventarioAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<DetallePedidoDto>> PostDetallePedido([FromBody] DetallePedidoCreateDto dto)
         {
-            await using var transaction = await _context.Database.BeginTransactionAsync();
-
-            var decrease = await _inventoryService.DecreaseStockAsync(dto.ProductoId, dto.Cantidad, dto.Timestamp);
-            if (!decrease.Success)
+            var pedido = await _context.PedidosClientes.FindAsync(dto.PedidoId);
+            if (pedido == null)
             {
-                return BadRequest(decrease.Error);
+                return BadRequest("Pedido no encontrado.");
+            }
+
+            if (!pedido.Estado.Equals("En preparación", StringComparison.OrdinalIgnoreCase)
+                && !pedido.Estado.Equals("En preparacion", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest("Solo se pueden agregar detalles a pedidos en preparación.");
+            }
+
+            var producto = await _context.Productos.FindAsync(dto.ProductoId);
+            if (producto == null)
+            {
+                return BadRequest("Producto no encontrado.");
             }
 
             var detalle = new DetallePedido
@@ -54,14 +66,12 @@ namespace InventarioAPI.Controllers
                 PedidoId = dto.PedidoId,
                 ProductoId = dto.ProductoId,
                 Cantidad = dto.Cantidad,
-                PrecioUnitario = dto.PrecioUnitario,
+                PrecioUnitario = producto.PrecioVenta,
                 Timestamp = dto.Timestamp
             };
 
             _context.DetallesPedidos.Add(detalle);
             await _context.SaveChangesAsync();
-
-            await transaction.CommitAsync();
 
             return CreatedAtAction(nameof(GetDetallePedido), new { id = detalle.Id }, ToDto(detalle));
         }
@@ -75,10 +85,16 @@ namespace InventarioAPI.Controllers
                 return NotFound();
             }
 
+            var producto = await _context.Productos.FindAsync(dto.ProductoId);
+            if (producto == null)
+            {
+                return BadRequest("Producto no encontrado.");
+            }
+
             detalle.PedidoId = dto.PedidoId;
             detalle.ProductoId = dto.ProductoId;
             detalle.Cantidad = dto.Cantidad;
-            detalle.PrecioUnitario = dto.PrecioUnitario;
+            detalle.PrecioUnitario = producto.PrecioVenta;
             detalle.Timestamp = dto.Timestamp;
 
             await _context.SaveChangesAsync();
@@ -106,8 +122,10 @@ namespace InventarioAPI.Controllers
                 Id = detalle.Id,
                 PedidoId = detalle.PedidoId,
                 ProductoId = detalle.ProductoId,
+                NombreProducto = detalle.Producto?.Nombre ?? string.Empty,
                 Cantidad = detalle.Cantidad,
                 PrecioUnitario = detalle.PrecioUnitario,
+                Subtotal = detalle.Cantidad * detalle.PrecioUnitario,
                 Timestamp = detalle.Timestamp
             };
         }
