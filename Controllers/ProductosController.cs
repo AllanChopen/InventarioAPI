@@ -56,6 +56,62 @@ namespace InventarioAPI.Controllers
             return productos.Select(ToDto).ToList();
         }
 
+        [HttpGet("resumen")]
+        public async Task<ActionResult<ResumenInventarioDto>> GetResumenInventario(
+            [FromQuery] string? search,
+            [FromQuery] string? categoria,
+            [FromQuery] string? ubicacion,
+            [FromQuery] bool? soloBajoStock)
+        {
+            var query = _context.Productos.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.ToLower();
+                query = query.Where(p => p.Nombre.ToLower().Contains(term) || p.Codigo.ToLower().Contains(term));
+            }
+
+            if (!string.IsNullOrWhiteSpace(categoria))
+            {
+                var cat = categoria.ToLower();
+                query = query.Where(p => p.Categoria.ToLower().Contains(cat));
+            }
+
+            if (!string.IsNullOrWhiteSpace(ubicacion))
+            {
+                var ubi = ubicacion.ToLower();
+                query = query.Where(p => p.Ubicacion.ToLower().Contains(ubi));
+            }
+
+            if (soloBajoStock == true)
+            {
+                query = query.Where(p => p.StockActual <= p.StockMinimo);
+            }
+
+            var resumen = await query
+                .GroupBy(_ => 1)
+                .Select(g => new ResumenInventarioDto
+                {
+                    TotalProductos = g.Count(),
+                    UnidadesTotales = g.Sum(p => p.StockActual),
+                    ProductosBajoStock = g.Count(p => p.StockActual <= p.StockMinimo),
+                    ValorInventarioCosto = g.Sum(p => p.StockActual * p.CostoUnitario),
+                    ValorInventarioVenta = g.Sum(p => p.StockActual * p.PrecioVenta),
+                    GeneratedAt = DateTime.UtcNow.ToString("O")
+                })
+                .FirstOrDefaultAsync();
+
+            return resumen ?? new ResumenInventarioDto
+            {
+                TotalProductos = 0,
+                UnidadesTotales = 0,
+                ProductosBajoStock = 0,
+                ValorInventarioCosto = 0,
+                ValorInventarioVenta = 0,
+                GeneratedAt = DateTime.UtcNow.ToString("O")
+            };
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<ProductoDto>> GetProducto(int id)
         {

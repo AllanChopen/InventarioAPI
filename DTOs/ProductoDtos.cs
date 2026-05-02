@@ -76,4 +76,25 @@ namespace InventarioAPI.DTOs
         [System.Text.Json.Serialization.JsonPropertyName("totalPedidos")]
         public int TotalPedidos { get; set; }
     }
+
+    public class ResumenInventarioDto
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("totalProductos")]
+        public int TotalProductos { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("unidadesTotales")]
+        public int UnidadesTotales { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("productosBajoStock")]
+        public int ProductosBajoStock { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("valorInventarioCosto")]
+        public decimal ValorInventarioCosto { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("valorInventarioVenta")]
+        public decimal ValorInventarioVenta { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("generatedAt")]
+        public string GeneratedAt { get; set; } = string.Empty;
+    }
 }
