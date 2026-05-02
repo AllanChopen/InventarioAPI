@@ -54,19 +54,21 @@ namespace InventarioAPI.Controllers
 
             await using var transaction = await _context.Database.BeginTransactionAsync();
 
+            var pedidoTimestamp = dto.Timestamp == default ? DateTime.UtcNow : dto.Timestamp;
+
             var pedido = new PedidoCliente
             {
                 ClienteId = dto.ClienteId,
-                Fecha = dto.Fecha,
+                // Set Fecha based on timestamp (Unix seconds)
+                Fecha = (int)new DateTimeOffset(pedidoTimestamp).ToUnixTimeSeconds(),
                 Estado = dto.Estado,
-                Timestamp = dto.Timestamp == default ? DateTime.UtcNow : dto.Timestamp
+                Timestamp = pedidoTimestamp
             };
 
             _context.PedidosClientes.Add(pedido);
             await _context.SaveChangesAsync();
 
             decimal total = 0m;
-
             foreach (var d in dto.Detalles ?? Enumerable.Empty<DetallePedidoCreateDto>())
             {
                 var producto = await _context.Productos.FindAsync(d.ProductoId);
@@ -82,7 +84,7 @@ namespace InventarioAPI.Controllers
                     return BadRequest($"Stock insuficiente para el producto {producto.Codigo} ({producto.Nombre}). Disponible: {producto.StockActual}, requerido: {d.Cantidad}.");
                 }
 
-                var res = await _inventoryService.DecreaseStockAsync(d.ProductoId, d.Cantidad, d.Timestamp == default ? DateTime.UtcNow : d.Timestamp);
+                var res = await _inventoryService.DecreaseStockAsync(d.ProductoId, d.Cantidad, DateTime.UtcNow);
                 if (!res.Success)
                 {
                     await transaction.RollbackAsync();
@@ -94,12 +96,12 @@ namespace InventarioAPI.Controllers
                     PedidoId = pedido.Id,
                     ProductoId = d.ProductoId,
                     Cantidad = d.Cantidad,
-                    PrecioUnitario = d.PrecioUnitario,
-                    Timestamp = d.Timestamp == default ? DateTime.UtcNow : d.Timestamp
+                    PrecioUnitario = producto.PrecioVenta,
+                    Timestamp = DateTime.UtcNow
                 };
 
                 _context.DetallesPedidos.Add(detalle);
-                total += d.Cantidad * d.PrecioUnitario;
+                total += d.Cantidad * producto.PrecioVenta;
             }
 
             await _context.SaveChangesAsync();

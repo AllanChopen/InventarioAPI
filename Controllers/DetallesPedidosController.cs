@@ -41,16 +41,32 @@ namespace InventarioAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<DetallePedidoDto>> PostDetallePedido([FromBody] DetallePedidoCreateDto dto)
         {
-            // Validate that the parent Pedido exists to avoid FK violations
-            var pedidoExists = await _context.PedidosClientes.AnyAsync(p => p.Id == dto.PedidoId);
-            if (!pedidoExists)
+            // For standalone detalle endpoint, PedidoId is required.
+            if (!dto.PedidoId.HasValue)
             {
-                return BadRequest($"Pedido {dto.PedidoId} no encontrado.");
+                return BadRequest("PedidoId es requerido para crear un detalle de pedido de forma independiente.");
+            }
+
+            var pedido = await _context.PedidosClientes.FindAsync(dto.PedidoId.Value);
+            if (pedido == null)
+            {
+                return NotFound();
+            }
+
+            var producto = await _context.Productos.FindAsync(dto.ProductoId);
+            if (producto == null)
+            {
+                return BadRequest($"Producto {dto.ProductoId} no encontrado.");
+            }
+
+            if (producto.StockActual < dto.Cantidad)
+            {
+                return BadRequest($"Stock insuficiente para el producto {producto.Codigo} ({producto.Nombre}). Disponible: {producto.StockActual}, requerido: {dto.Cantidad}.");
             }
 
             await using var transaction = await _context.Database.BeginTransactionAsync();
 
-            var decrease = await _inventoryService.DecreaseStockAsync(dto.ProductoId, dto.Cantidad, dto.Timestamp);
+            var decrease = await _inventoryService.DecreaseStockAsync(dto.ProductoId, dto.Cantidad, DateTime.UtcNow);
             if (!decrease.Success)
             {
                 return BadRequest(decrease.Error);
@@ -58,11 +74,11 @@ namespace InventarioAPI.Controllers
 
             var detalle = new DetallePedido
             {
-                PedidoId = dto.PedidoId,
+                PedidoId = dto.PedidoId.Value,
                 ProductoId = dto.ProductoId,
                 Cantidad = dto.Cantidad,
-                PrecioUnitario = dto.PrecioUnitario,
-                Timestamp = dto.Timestamp
+                PrecioUnitario = producto.PrecioVenta,
+                Timestamp = DateTime.UtcNow
             };
 
             _context.DetallesPedidos.Add(detalle);

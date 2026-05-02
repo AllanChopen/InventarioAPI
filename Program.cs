@@ -1,10 +1,15 @@
 using InventarioAPI.Data;
 using Microsoft.EntityFrameworkCore;
+using InventarioAPI.Swagger;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Controllers
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(opts =>
+    {
+        opts.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    });
 
 // EF Core PostgreSQL
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -19,7 +24,10 @@ builder.Services.AddSignalR();
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.OperationFilter<ExamplesOperationFilter>();
+});
 
 // ===== Render: escuchar el puerto que Render expone en la env PORT =====
 var port = Environment.GetEnvironmentVariable("PORT");

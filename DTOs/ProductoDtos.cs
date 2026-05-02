@@ -55,12 +55,25 @@ namespace InventarioAPI.DTOs
 
     public class ProductoMasVendidoDto
     {
+        [System.Text.Json.Serialization.JsonPropertyName("productoId")]
         public int ProductoId { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("nombre")]
         public string Nombre { get; set; } = string.Empty;
+
+        [System.Text.Json.Serialization.JsonPropertyName("codigo")]
         public string Codigo { get; set; } = string.Empty;
+
+        [System.Text.Json.Serialization.JsonPropertyName("categoria")]
         public string Categoria { get; set; } = string.Empty;
+
+        [System.Text.Json.Serialization.JsonPropertyName("cantidadVendida")]
         public int CantidadVendida { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("ingresoTotal")]
         public decimal IngresoTotal { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalPedidos")]
         public int TotalPedidos { get; set; }
     }
 }
