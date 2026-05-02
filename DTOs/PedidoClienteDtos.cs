@@ -12,6 +12,7 @@ namespace InventarioAPI.DTOs
         public DateTime Timestamp { get; set; }
         public string ClienteNombre { get; set; } = string.Empty;
         public decimal Total { get; set; }
+        public List<DetallePedidoDto> Detalles { get; set; } = new List<DetallePedidoDto>();
     }
 
     public class PedidoClienteCreateDto

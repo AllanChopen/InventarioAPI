@@ -26,14 +26,24 @@ namespace InventarioAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<PedidoClienteDto>>> GetPedidosClientes()
         {
-            var pedidos = await _context.PedidosClientes.ToListAsync();
+            var pedidos = await _context.PedidosClientes
+                .Include(p => p.Cliente)
+                .Include(p => p.Detalles)
+                    .ThenInclude(d => d.Producto)
+                .ToListAsync();
+
             return pedidos.Select(ToDto).ToList();
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<PedidoClienteDto>> GetPedidoCliente(int id)
         {
-            var pedido = await _context.PedidosClientes.FindAsync(id);
+            var pedido = await _context.PedidosClientes
+                .Include(p => p.Cliente)
+                .Include(p => p.Detalles)
+                    .ThenInclude(d => d.Producto)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
             if (pedido == null)
             {
                 return NotFound();
@@ -256,13 +266,31 @@ namespace InventarioAPI.Controllers
 
         private static PedidoClienteDto ToDto(PedidoCliente pedido)
         {
+            var detalles = pedido.Detalles?.Select(d => new DetallePedidoDto
+            {
+                Id = d.Id,
+                PedidoId = d.PedidoId,
+                ProductoId = d.ProductoId,
+                Cantidad = d.Cantidad,
+                PrecioUnitario = d.PrecioUnitario,
+                Timestamp = d.Timestamp,
+                Nombre = d.Producto?.Nombre ?? string.Empty,
+                Codigo = d.Producto?.Codigo ?? string.Empty,
+                Total = d.Cantidad * d.PrecioUnitario
+            }).ToList() ?? new List<DetallePedidoDto>();
+
+            var total = detalles.Sum(x => x.Total);
+
             return new PedidoClienteDto
             {
                 Id = pedido.Id,
                 ClienteId = pedido.ClienteId,
                 Fecha = pedido.Fecha,
                 Estado = pedido.Estado,
-                Timestamp = pedido.Timestamp
+                Timestamp = pedido.Timestamp,
+                ClienteNombre = pedido.Cliente != null ? (pedido.Cliente.Nombre + " " + pedido.Cliente.Apellido) : string.Empty,
+                Total = total,
+                Detalles = detalles
             };
         }
     }
