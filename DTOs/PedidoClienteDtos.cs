@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace InventarioAPI.DTOs
 {
@@ -9,6 +10,8 @@ namespace InventarioAPI.DTOs
         public int Fecha { get; set; }
         public string Estado { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; }
+        public string ClienteNombre { get; set; } = string.Empty;
+        public decimal Total { get; set; }
     }
 
     public class PedidoClienteCreateDto
@@ -17,6 +20,7 @@ namespace InventarioAPI.DTOs
         public int Fecha { get; set; }
         public string Estado { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; }
+        public List<DetallePedidoCreateDto> Detalles { get; set; } = new List<DetallePedidoCreateDto>();
     }
 
     public class PedidoClienteUpdateDto

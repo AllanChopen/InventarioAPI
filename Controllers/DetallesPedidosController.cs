@@ -41,6 +41,13 @@ namespace InventarioAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<DetallePedidoDto>> PostDetallePedido([FromBody] DetallePedidoCreateDto dto)
         {
+            // Validate that the parent Pedido exists to avoid FK violations
+            var pedidoExists = await _context.PedidosClientes.AnyAsync(p => p.Id == dto.PedidoId);
+            if (!pedidoExists)
+            {
+                return BadRequest($"Pedido {dto.PedidoId} no encontrado.");
+            }
+
             await using var transaction = await _context.Database.BeginTransactionAsync();
 
             var decrease = await _inventoryService.DecreaseStockAsync(dto.ProductoId, dto.Cantidad, dto.Timestamp);

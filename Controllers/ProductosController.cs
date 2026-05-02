@@ -146,6 +146,52 @@ namespace InventarioAPI.Controllers
             return NoContent();
         }
 
+        [HttpGet("mas-vendidos")]
+        public async Task<ActionResult<IEnumerable<ProductoMasVendidoDto>>> GetMasVendidos(
+            [FromQuery] int? top,
+            [FromQuery] string? desde,
+            [FromQuery] string? hasta)
+        {
+            DateTime? desdeDt = null;
+            DateTime? hastaDt = null;
+            if (!string.IsNullOrWhiteSpace(desde) && DateTime.TryParse(desde, out var d)) desdeDt = d;
+            if (!string.IsNullOrWhiteSpace(hasta) && DateTime.TryParse(hasta, out var h)) hastaDt = h;
+
+            var detalles = _context.DetallesPedidos.AsQueryable();
+            if (desdeDt.HasValue) detalles = detalles.Where(x => x.Timestamp >= desdeDt.Value);
+            if (hastaDt.HasValue) detalles = detalles.Where(x => x.Timestamp <= hastaDt.Value);
+
+            var query = detalles
+                .GroupBy(d => d.ProductoId)
+                .Select(g => new
+                {
+                    ProductoId = g.Key,
+                    Nombre = g.Select(x => x.Producto!.Nombre).FirstOrDefault(),
+                    Codigo = g.Select(x => x.Producto!.Codigo).FirstOrDefault(),
+                    Categoria = g.Select(x => x.Producto!.Categoria).FirstOrDefault(),
+                    CantidadVendida = g.Sum(x => x.Cantidad),
+                    IngresoTotal = g.Sum(x => x.Cantidad * x.PrecioUnitario),
+                    TotalPedidos = g.Select(x => x.PedidoId).Distinct().Count()
+                })
+                .OrderByDescending(x => x.CantidadVendida)
+                .Take(top ?? 10);
+
+            var result = await query.ToListAsync();
+
+            var mapped = result.Select(p => new ProductoMasVendidoDto
+            {
+                ProductoId = p.ProductoId,
+                Nombre = p.Nombre ?? string.Empty,
+                Codigo = p.Codigo ?? string.Empty,
+                Categoria = p.Categoria ?? string.Empty,
+                CantidadVendida = p.CantidadVendida,
+                IngresoTotal = p.IngresoTotal,
+                TotalPedidos = p.TotalPedidos
+            }).ToList();
+
+            return mapped;
+        }
+
         private static ProductoDto ToDto(Producto producto)
         {
             var stockBajo = producto.StockActual <= producto.StockMinimo;

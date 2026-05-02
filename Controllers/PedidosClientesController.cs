@@ -45,18 +45,82 @@ namespace InventarioAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<PedidoClienteDto>> PostPedidoCliente([FromBody] PedidoClienteCreateDto dto)
         {
+            // Validate client exists
+            var cliente = await _context.Clientes.FindAsync(dto.ClienteId);
+            if (cliente == null)
+            {
+                return BadRequest($"Cliente {dto.ClienteId} no encontrado.");
+            }
+
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+
             var pedido = new PedidoCliente
             {
                 ClienteId = dto.ClienteId,
                 Fecha = dto.Fecha,
                 Estado = dto.Estado,
-                Timestamp = dto.Timestamp
+                Timestamp = dto.Timestamp == default ? DateTime.UtcNow : dto.Timestamp
             };
 
             _context.PedidosClientes.Add(pedido);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetPedidoCliente), new { id = pedido.Id }, ToDto(pedido));
+            decimal total = 0m;
+
+            foreach (var d in dto.Detalles ?? Enumerable.Empty<DetallePedidoCreateDto>())
+            {
+                var producto = await _context.Productos.FindAsync(d.ProductoId);
+                if (producto == null)
+                {
+                    await transaction.RollbackAsync();
+                    return BadRequest($"Producto {d.ProductoId} no encontrado.");
+                }
+
+                if (producto.StockActual < d.Cantidad)
+                {
+                    await transaction.RollbackAsync();
+                    return BadRequest($"Stock insuficiente para el producto {producto.Codigo} ({producto.Nombre}). Disponible: {producto.StockActual}, requerido: {d.Cantidad}.");
+                }
+
+                var res = await _inventoryService.DecreaseStockAsync(d.ProductoId, d.Cantidad, d.Timestamp == default ? DateTime.UtcNow : d.Timestamp);
+                if (!res.Success)
+                {
+                    await transaction.RollbackAsync();
+                    return BadRequest(res.Error);
+                }
+
+                var detalle = new DetallePedido
+                {
+                    PedidoId = pedido.Id,
+                    ProductoId = d.ProductoId,
+                    Cantidad = d.Cantidad,
+                    PrecioUnitario = d.PrecioUnitario,
+                    Timestamp = d.Timestamp == default ? DateTime.UtcNow : d.Timestamp
+                };
+
+                _context.DetallesPedidos.Add(detalle);
+                total += d.Cantidad * d.PrecioUnitario;
+            }
+
+            await _context.SaveChangesAsync();
+
+            pedido.Timestamp = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            await transaction.CommitAsync();
+
+            var response = new PedidoClienteDto
+            {
+                Id = pedido.Id,
+                ClienteId = pedido.ClienteId,
+                Fecha = pedido.Fecha,
+                Estado = pedido.Estado,
+                Timestamp = pedido.Timestamp,
+                ClienteNombre = cliente.Nombre + " " + cliente.Apellido,
+                Total = total
+            };
+
+            return CreatedAtAction(nameof(GetPedidoCliente), new { id = pedido.Id }, response);
         }
 
         [HttpPut("{id}")]
