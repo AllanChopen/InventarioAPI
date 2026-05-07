@@ -4,3 +4,38 @@ GET {{InventarioAPI_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+GET {{InventarioAPI_HostAddress}}/api/productos?bodega=Central
+Accept: application/json
+
+###
+
+GET {{InventarioAPI_HostAddress}}/api/productos?search=teclado&categoria=Perifericos&bodega=Sur&soloBajoStock=true
+Accept: application/json
+
+###
+
+GET {{InventarioAPI_HostAddress}}/api/productos/resumen?bodega=Norte
+Accept: application/json
+
+###
+
+GET {{InventarioAPI_HostAddress}}/api/categorias
+Accept: application/json
+
+###
+
+GET {{InventarioAPI_HostAddress}}/api/bodegas
+Accept: application/json
+
+###
+
+GET {{InventarioAPI_HostAddress}}/api/productos/rotacion
+Accept: application/json
+
+###
+
+GET {{InventarioAPI_HostAddress}}/api/productos/rotacion?desde=2026-01-01&hasta=2026-12-31&top=10
+Accept: application/json
+
+###

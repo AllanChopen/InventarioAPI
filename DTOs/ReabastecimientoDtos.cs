@@ -10,6 +10,9 @@ namespace InventarioAPI.DTOs
         public string NombreProducto { get; set; } = string.Empty;
         public int CantidadSugerida { get; set; }
         public int? ProveedorSugeridoId { get; set; }
+        public string ProveedorSugeridoNombre { get; set; } = string.Empty;
+        public int? ProveedorSugeridoCategoriaId { get; set; }
+        public string ProveedorSugeridoCategoria { get; set; } = string.Empty;
         public string Estado { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; }
         public int? OrdenCompraId { get; set; }

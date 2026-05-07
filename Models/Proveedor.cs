@@ -24,11 +24,17 @@ namespace InventarioAPI.Models
         [Column("direccion")]
         public string Direccion { get; set; } = string.Empty;
 
+        [Column("categoria_id")]
+        public int CategoriaId { get; set; }
+
         [Column("estado")]
         public bool Estado { get; set; }
 
         [Column("timestamp")]
         public DateTime Timestamp { get; set; }
+
+        [ForeignKey(nameof(CategoriaId))]
+        public Categoria? Categoria { get; set; }
 
         public ICollection<OrdenCompra> OrdenesCompras { get; set; } = new List<OrdenCompra>();
     }

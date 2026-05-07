@@ -7,8 +7,10 @@ namespace InventarioAPI.DTOs
         public int Id { get; set; }
         public string Nombre { get; set; } = string.Empty;
         public string Codigo { get; set; } = string.Empty;
+        public int CategoriaId { get; set; }
         public string Categoria { get; set; } = string.Empty;
-        public string Ubicacion { get; set; } = string.Empty;
+        public int BodegaId { get; set; }
+        public string BodegaNombre { get; set; } = string.Empty;
         public string Descripcion { get; set; } = string.Empty;
         public decimal PrecioVenta { get; set; }
         public decimal CostoUnitario { get; set; }
@@ -19,14 +21,19 @@ namespace InventarioAPI.DTOs
         public DateTime Timestamp { get; set; }
         public bool StockBajo { get; set; }
         public string NivelInventario { get; set; } = string.Empty;
+        public int CantidadVendida { get; set; }
+        public int TotalPedidos { get; set; }
+        public decimal IngresoTotal { get; set; }
+        public decimal IndiceRotacion { get; set; }
+        public string NivelRotacion { get; set; } = string.Empty;
+        public double DiasPromedioInventario { get; set; }
     }
 
     public class ProductoCreateDto
     {
         public string Nombre { get; set; } = string.Empty;
-        public string Codigo { get; set; } = string.Empty;
-        public string Categoria { get; set; } = string.Empty;
-        public string Ubicacion { get; set; } = string.Empty;
+        public int CategoriaId { get; set; }
+        public int BodegaId { get; set; }
         public string Descripcion { get; set; } = string.Empty;
         public decimal PrecioVenta { get; set; }
         public decimal CostoUnitario { get; set; }
@@ -40,9 +47,8 @@ namespace InventarioAPI.DTOs
     public class ProductoUpdateDto
     {
         public string Nombre { get; set; } = string.Empty;
-        public string Codigo { get; set; } = string.Empty;
-        public string Categoria { get; set; } = string.Empty;
-        public string Ubicacion { get; set; } = string.Empty;
+        public int CategoriaId { get; set; }
+        public int BodegaId { get; set; }
         public string Descripcion { get; set; } = string.Empty;
         public decimal PrecioVenta { get; set; }
         public decimal CostoUnitario { get; set; }
@@ -75,6 +81,42 @@ namespace InventarioAPI.DTOs
 
         [System.Text.Json.Serialization.JsonPropertyName("totalPedidos")]
         public int TotalPedidos { get; set; }
+    }
+
+    public class ProductoRotacionDto
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("productoId")]
+        public int ProductoId { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("nombre")]
+        public string Nombre { get; set; } = string.Empty;
+
+        [System.Text.Json.Serialization.JsonPropertyName("codigo")]
+        public string Codigo { get; set; } = string.Empty;
+
+        [System.Text.Json.Serialization.JsonPropertyName("categoria")]
+        public string Categoria { get; set; } = string.Empty;
+
+        [System.Text.Json.Serialization.JsonPropertyName("bodega")]
+        public string Bodega { get; set; } = string.Empty;
+
+        [System.Text.Json.Serialization.JsonPropertyName("cantidadVendida")]
+        public int CantidadVendida { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("totalPedidos")]
+        public int TotalPedidos { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("ingresoTotal")]
+        public decimal IngresoTotal { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("indiceRotacion")]
+        public decimal IndiceRotacion { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("nivelRotacion")]
+        public string NivelRotacion { get; set; } = string.Empty;
+
+        [System.Text.Json.Serialization.JsonPropertyName("diasPromedioInventario")]
+        public double DiasPromedioInventario { get; set; }
     }
 
     public class ResumenInventarioDto

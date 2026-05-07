@@ -20,11 +20,11 @@ namespace InventarioAPI.Models
         [Column("codigo")]
         public string Codigo { get; set; } = string.Empty;
 
-        [Column("categoria")]
-        public string Categoria { get; set; } = string.Empty;
+        [Column("categoria_id")]
+        public int CategoriaId { get; set; }
 
-        [Column("ubicacion")]
-        public string Ubicacion { get; set; } = string.Empty;
+        [Column("bodega_id")]
+        public int BodegaId { get; set; }
 
         [Column("descripcion")]
         public string Descripcion { get; set; } = string.Empty;
@@ -52,6 +52,12 @@ namespace InventarioAPI.Models
 
         [ForeignKey(nameof(CreadoPorId))]
         public Usuario? CreadoPor { get; set; }
+
+        [ForeignKey(nameof(BodegaId))]
+        public Bodega? Bodega { get; set; }
+
+        [ForeignKey(nameof(CategoriaId))]
+        public Categoria? Categoria { get; set; }
 
         public ICollection<DetalleOrdenCompra> DetallesOrdenesCompra { get; set; } = new List<DetalleOrdenCompra>();
 

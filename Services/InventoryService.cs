@@ -127,13 +127,25 @@ namespace InventarioAPI.Services
             _context.Reabastecimientos.Add(reabastecimiento);
             await _context.SaveChangesAsync();
 
-            // Determine a suggested proveedor for the reabastecimiento (may create a fallback proveedor)
-            var proveedorId = await _context.Proveedores.Select(p => p.Id).FirstOrDefaultAsync();
+            // Suggest an active proveedor that matches the product category.
+            var productoConCategoria = await _context.Productos
+                .Include(p => p.Categoria)
+                .FirstOrDefaultAsync(p => p.Id == producto.Id);
+
+            var proveedorId = await _context.Proveedores
+                .Where(p => p.Estado && p.CategoriaId == producto.CategoriaId)
+                .OrderBy(p => p.Id)
+                .Select(p => p.Id)
+                .FirstOrDefaultAsync();
+
             if (proveedorId == 0)
             {
                 var proveedorFallback = new Proveedor
                 {
-                    Nombre = "Proveedor Sugerido",
+                    Nombre = productoConCategoria?.Categoria?.Nombre is { Length: > 0 } categoriaNombre
+                        ? $"Proveedor {categoriaNombre}"
+                        : "Proveedor Sugerido",
+                    CategoriaId = producto.CategoriaId,
                     Telefono = string.Empty,
                     Email = string.Empty,
                     Direccion = string.Empty,

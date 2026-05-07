@@ -22,6 +22,83 @@ namespace InventarioAPI.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("InventarioAPI.Models.Bodega", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("nombre");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("bodegas");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Nombre = "Bodega Central"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Nombre = "Bodega Sur"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Nombre = "Bodega Norte"
+                        });
+                });
+
+            modelBuilder.Entity("InventarioAPI.Models.Categoria", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("nombre");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("categorias");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Nombre = "Hardware"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Nombre = "Periféricos"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Nombre = "Audio"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Nombre = "Monitores"
+                        });
+                });
+
             modelBuilder.Entity("InventarioAPI.Models.Cliente", b =>
                 {
                     b.Property<int>("Id")
@@ -249,10 +326,17 @@ namespace InventarioAPI.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Categoria")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("categoria");
+                    b.Property<int>("BodegaId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("bodega_id");
+
+                    b.Property<int>("CategoriaId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("categoria_id");
 
                     b.Property<string>("Codigo")
                         .IsRequired()
@@ -297,12 +381,11 @@ namespace InventarioAPI.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("timestamp");
 
-                    b.Property<string>("Ubicacion")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("ubicacion");
-
                     b.HasKey("Id");
+
+                    b.HasIndex("BodegaId");
+
+                    b.HasIndex("CategoriaId");
 
                     b.HasIndex("Codigo")
                         .IsUnique();
@@ -320,6 +403,12 @@ namespace InventarioAPI.Migrations
                         .HasColumnName("id");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CategoriaId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("categoria_id");
 
                     b.Property<string>("Direccion")
                         .IsRequired()
@@ -350,6 +439,8 @@ namespace InventarioAPI.Migrations
                         .HasColumnName("timestamp");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CategoriaId");
 
                     b.ToTable("proveedores");
                 });
@@ -510,13 +601,40 @@ namespace InventarioAPI.Migrations
 
             modelBuilder.Entity("InventarioAPI.Models.Producto", b =>
                 {
+                    b.HasOne("InventarioAPI.Models.Bodega", "Bodega")
+                        .WithMany("Productos")
+                        .HasForeignKey("BodegaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("InventarioAPI.Models.Categoria", "Categoria")
+                        .WithMany("Productos")
+                        .HasForeignKey("CategoriaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("InventarioAPI.Models.Usuario", "CreadoPor")
                         .WithMany("ProductosCreados")
                         .HasForeignKey("CreadoPorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Bodega");
+
+                    b.Navigation("Categoria");
+
                     b.Navigation("CreadoPor");
+                });
+
+            modelBuilder.Entity("InventarioAPI.Models.Proveedor", b =>
+                {
+                    b.HasOne("InventarioAPI.Models.Categoria", "Categoria")
+                        .WithMany("Proveedores")
+                        .HasForeignKey("CategoriaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Categoria");
                 });
 
             modelBuilder.Entity("InventarioAPI.Models.Reabastecimiento", b =>
@@ -540,6 +658,18 @@ namespace InventarioAPI.Migrations
                     b.Navigation("Producto");
 
                     b.Navigation("ProveedorSugerido");
+                });
+
+            modelBuilder.Entity("InventarioAPI.Models.Bodega", b =>
+                {
+                    b.Navigation("Productos");
+                });
+
+            modelBuilder.Entity("InventarioAPI.Models.Categoria", b =>
+                {
+                    b.Navigation("Productos");
+
+                    b.Navigation("Proveedores");
                 });
 
             modelBuilder.Entity("InventarioAPI.Models.Cliente", b =>

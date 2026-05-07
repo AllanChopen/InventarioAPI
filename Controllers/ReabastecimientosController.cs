@@ -25,6 +25,8 @@ namespace InventarioAPI.Controllers
         {
             var items = await _context.Reabastecimientos
                 .Include(r => r.Producto)
+                .Include(r => r.ProveedorSugerido)
+                    .ThenInclude(p => p!.Categoria)
                 .OrderByDescending(r => r.Timestamp)
                 .ToListAsync();
 
@@ -36,6 +38,8 @@ namespace InventarioAPI.Controllers
         {
             var item = await _context.Reabastecimientos
                 .Include(r => r.Producto)
+                .Include(r => r.ProveedorSugerido)
+                    .ThenInclude(p => p!.Categoria)
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (item == null)
@@ -67,6 +71,14 @@ namespace InventarioAPI.Controllers
             await _context.SaveChangesAsync();
 
             await _context.Entry(entity).Reference(e => e.Producto).LoadAsync();
+            if (entity.ProveedorSugeridoId.HasValue)
+            {
+                await _context.Entry(entity).Reference(e => e.ProveedorSugerido).LoadAsync();
+                if (entity.ProveedorSugerido != null)
+                {
+                    await _context.Entry(entity.ProveedorSugerido).Reference(p => p.Categoria).LoadAsync();
+                }
+            }
 
             // Reload to include OrdenCompraId if set by InventoryService
             await _context.Entry(entity).Reference(e => e.OrdenCompra).LoadAsync();
@@ -105,13 +117,26 @@ namespace InventarioAPI.Controllers
                 return NotFound();
             }
 
+            var producto = await _context.Productos
+                .Include(p => p.Categoria)
+                .FirstOrDefaultAsync(p => p.Id == entity.ProductoId);
+
             // Create OrdenCompra when approving the reabastecimiento
-            var proveedorId = entity.ProveedorSugeridoId ?? await _context.Proveedores.Select(p => p.Id).FirstOrDefaultAsync();
+            var proveedorId = entity.ProveedorSugeridoId
+                ?? await _context.Proveedores
+                    .Where(p => p.Estado && producto != null && p.CategoriaId == producto.CategoriaId)
+                    .OrderBy(p => p.Id)
+                    .Select(p => p.Id)
+                    .FirstOrDefaultAsync();
+
             if (proveedorId == 0)
             {
                 var proveedorFallback = new Proveedor
                 {
-                    Nombre = "Proveedor Sugerido",
+                    Nombre = producto?.Categoria?.Nombre is { Length: > 0 } categoriaNombre
+                        ? $"Proveedor {categoriaNombre}"
+                        : "Proveedor Sugerido",
+                    CategoriaId = producto?.CategoriaId ?? 1,
                     Telefono = string.Empty,
                     Email = string.Empty,
                     Direccion = string.Empty,
@@ -135,7 +160,6 @@ namespace InventarioAPI.Controllers
             _context.OrdenesCompras.Add(orden);
             await _context.SaveChangesAsync();
 
-            var producto = await _context.Productos.FindAsync(entity.ProductoId);
             var detalle = new DetalleOrdenCompra
             {
                 OrdenId = orden.Id,
@@ -193,7 +217,10 @@ namespace InventarioAPI.Controllers
                 Estado = r.Estado,
                 Timestamp = r.Timestamp,
                 OrdenCompraId = r.OrdenCompraId,
-                ProveedorSugeridoId = r.ProveedorSugeridoId
+                ProveedorSugeridoId = r.ProveedorSugeridoId,
+                ProveedorSugeridoNombre = r.ProveedorSugerido?.Nombre ?? string.Empty,
+                ProveedorSugeridoCategoriaId = r.ProveedorSugerido?.CategoriaId,
+                ProveedorSugeridoCategoria = r.ProveedorSugerido?.Categoria?.Nombre ?? string.Empty
             };
         }
     }
