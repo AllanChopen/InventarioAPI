@@ -32,16 +32,16 @@ namespace InventarioAPI.DTOs
     public class ProductoCreateDto
     {
         public string Nombre { get; set; } = string.Empty;
-        public int CategoriaId { get; set; }
-        public int BodegaId { get; set; }
-        public string Descripcion { get; set; } = string.Empty;
+        public int? CategoriaId { get; set; }
+        public int? BodegaId { get; set; }
+        public string? Descripcion { get; set; }
         public decimal PrecioVenta { get; set; }
         public decimal CostoUnitario { get; set; }
-        public int StockActual { get; set; }
-        public int StockMinimo { get; set; }
-        public bool Estado { get; set; }
+        public int? StockActual { get; set; }
+        public int? StockMinimo { get; set; }
+        public bool? Estado { get; set; }
         public int CreadoPorId { get; set; }
-        public DateTime Timestamp { get; set; }
+        public DateTime? Timestamp { get; set; }
     }
 
     public class ProductoUpdateDto

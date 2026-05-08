@@ -55,6 +55,16 @@ namespace InventarioAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<PedidoClienteDto>> PostPedidoCliente([FromBody] PedidoClienteCreateDto dto)
         {
+            if (dto.ClienteId <= 0)
+            {
+                return BadRequest("El cliente es obligatorio.");
+            }
+
+            if (dto.Detalles == null || dto.Detalles.Count == 0)
+            {
+                return BadRequest("El pedido debe incluir al menos un producto.");
+            }
+
             // Validate client exists
             var cliente = await _context.Clientes.FindAsync(dto.ClienteId);
             if (cliente == null)
@@ -64,14 +74,14 @@ namespace InventarioAPI.Controllers
 
             await using var transaction = await _context.Database.BeginTransactionAsync();
 
-            var pedidoTimestamp = dto.Timestamp == default ? DateTime.UtcNow : dto.Timestamp;
+            var pedidoTimestamp = dto.Timestamp ?? DateTime.UtcNow;
 
             var pedido = new PedidoCliente
             {
                 ClienteId = dto.ClienteId,
                 // Set Fecha based on timestamp (Unix seconds)
                 Fecha = (int)new DateTimeOffset(pedidoTimestamp).ToUnixTimeSeconds(),
-                Estado = dto.Estado,
+                Estado = "Pendiente",
                 Timestamp = pedidoTimestamp
             };
 
@@ -81,24 +91,23 @@ namespace InventarioAPI.Controllers
             decimal total = 0m;
             foreach (var d in dto.Detalles ?? Enumerable.Empty<DetallePedidoCreateDto>())
             {
+                if (d.ProductoId <= 0)
+                {
+                    await transaction.RollbackAsync();
+                    return BadRequest("Cada detalle debe incluir un producto valido.");
+                }
+
+                if (d.Cantidad <= 0)
+                {
+                    await transaction.RollbackAsync();
+                    return BadRequest("La cantidad de cada producto debe ser mayor a cero.");
+                }
+
                 var producto = await _context.Productos.FindAsync(d.ProductoId);
                 if (producto == null)
                 {
                     await transaction.RollbackAsync();
                     return BadRequest($"Producto {d.ProductoId} no encontrado.");
-                }
-
-                if (producto.StockActual < d.Cantidad)
-                {
-                    await transaction.RollbackAsync();
-                    return BadRequest($"Stock insuficiente para el producto {producto.Codigo} ({producto.Nombre}). Disponible: {producto.StockActual}, requerido: {d.Cantidad}.");
-                }
-
-                var res = await _inventoryService.DecreaseStockAsync(d.ProductoId, d.Cantidad, DateTime.UtcNow);
-                if (!res.Success)
-                {
-                    await transaction.RollbackAsync();
-                    return BadRequest(res.Error);
                 }
 
                 var detalle = new DetallePedido
@@ -121,18 +130,13 @@ namespace InventarioAPI.Controllers
 
             await transaction.CommitAsync();
 
-            var response = new PedidoClienteDto
-            {
-                Id = pedido.Id,
-                ClienteId = pedido.ClienteId,
-                Fecha = pedido.Fecha,
-                Estado = pedido.Estado,
-                Timestamp = pedido.Timestamp,
-                ClienteNombre = cliente.Nombre + " " + cliente.Apellido,
-                Total = total
-            };
+            var pedidoCreado = await _context.PedidosClientes
+                .Include(p => p.Cliente)
+                .Include(p => p.Detalles)
+                    .ThenInclude(d => d.Producto)
+                .FirstAsync(p => p.Id == pedido.Id);
 
-            return CreatedAtAction(nameof(GetPedidoCliente), new { id = pedido.Id }, response);
+            return CreatedAtAction(nameof(GetPedidoCliente), new { id = pedido.Id }, ToDto(pedidoCreado));
         }
 
         [HttpPut("{id}")]
@@ -276,6 +280,7 @@ namespace InventarioAPI.Controllers
                 Timestamp = d.Timestamp,
                 Nombre = d.Producto?.Nombre ?? string.Empty,
                 Codigo = d.Producto?.Codigo ?? string.Empty,
+                Descripcion = d.Producto?.Descripcion ?? string.Empty,
                 Total = d.Cantidad * d.PrecioUnitario
             }).ToList() ?? new List<DetallePedidoDto>();
 

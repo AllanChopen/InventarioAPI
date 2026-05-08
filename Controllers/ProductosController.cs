@@ -139,30 +139,48 @@ namespace InventarioAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<ProductoDto>> PostProducto([FromBody] ProductoCreateDto dto)
         {
-            if (!await _context.Bodegas.AnyAsync(b => b.Id == dto.BodegaId))
+            if (string.IsNullOrWhiteSpace(dto.Nombre))
+            {
+                return BadRequest("El nombre del producto es obligatorio.");
+            }
+
+            if (dto.CreadoPorId <= 0)
+            {
+                return BadRequest("El usuario creador es obligatorio.");
+            }
+
+            if (!await _context.Usuarios.AnyAsync(u => u.Id == dto.CreadoPorId))
+            {
+                return BadRequest("El usuario creador no existe.");
+            }
+
+            var bodegaId = dto.BodegaId.GetValueOrDefault(1);
+            var categoriaId = dto.CategoriaId.GetValueOrDefault(1);
+
+            if (!await _context.Bodegas.AnyAsync(b => b.Id == bodegaId))
             {
                 return BadRequest("La bodega seleccionada no existe.");
             }
 
-            if (!await _context.Categorias.AnyAsync(c => c.Id == dto.CategoriaId))
+            if (!await _context.Categorias.AnyAsync(c => c.Id == categoriaId))
             {
                 return BadRequest("La categoria seleccionada no existe.");
             }
 
             var producto = new Producto
             {
-                Nombre = dto.Nombre,
+                Nombre = dto.Nombre.Trim(),
                 Codigo = $"TMP-{Guid.NewGuid():N}",
-                CategoriaId = dto.CategoriaId,
-                BodegaId = dto.BodegaId,
-                Descripcion = dto.Descripcion,
+                CategoriaId = categoriaId,
+                BodegaId = bodegaId,
+                Descripcion = dto.Descripcion?.Trim() ?? string.Empty,
                 PrecioVenta = dto.PrecioVenta,
                 CostoUnitario = dto.CostoUnitario,
-                StockActual = dto.StockActual,
-                StockMinimo = dto.StockMinimo,
-                Estado = dto.Estado,
+                StockActual = dto.StockActual.GetValueOrDefault(),
+                StockMinimo = dto.StockMinimo.GetValueOrDefault(),
+                Estado = dto.Estado ?? true,
                 CreadoPorId = dto.CreadoPorId,
-                Timestamp = dto.Timestamp
+                Timestamp = dto.Timestamp ?? DateTime.UtcNow
             };
 
             _context.Productos.Add(producto);

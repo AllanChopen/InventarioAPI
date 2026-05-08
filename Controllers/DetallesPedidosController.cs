@@ -22,14 +22,18 @@ namespace InventarioAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<DetallePedidoDto>>> GetDetallesPedidos()
         {
-            var detalles = await _context.DetallesPedidos.ToListAsync();
+            var detalles = await _context.DetallesPedidos
+                .Include(d => d.Producto)
+                .ToListAsync();
             return detalles.Select(ToDto).ToList();
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<DetallePedidoDto>> GetDetallePedido(int id)
         {
-            var detalle = await _context.DetallesPedidos.FindAsync(id);
+            var detalle = await _context.DetallesPedidos
+                .Include(d => d.Producto)
+                .FirstOrDefaultAsync(d => d.Id == id);
             if (detalle == null)
             {
                 return NotFound();
@@ -53,23 +57,34 @@ namespace InventarioAPI.Controllers
                 return NotFound();
             }
 
+            if (pedido.Estado.Equals("Cancelado", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest("No se pueden agregar productos a un pedido cancelado.");
+            }
+
             var producto = await _context.Productos.FindAsync(dto.ProductoId);
             if (producto == null)
             {
                 return BadRequest($"Producto {dto.ProductoId} no encontrado.");
             }
 
-            if (producto.StockActual < dto.Cantidad)
+            var descontarStock = pedido.Estado.Equals("Confirmado", StringComparison.OrdinalIgnoreCase);
+
+            if (descontarStock && producto.StockActual < dto.Cantidad)
             {
                 return BadRequest($"Stock insuficiente para el producto {producto.Codigo} ({producto.Nombre}). Disponible: {producto.StockActual}, requerido: {dto.Cantidad}.");
             }
 
             await using var transaction = await _context.Database.BeginTransactionAsync();
 
-            var decrease = await _inventoryService.DecreaseStockAsync(dto.ProductoId, dto.Cantidad, DateTime.UtcNow);
-            if (!decrease.Success)
+            if (descontarStock)
             {
-                return BadRequest(decrease.Error);
+                var decrease = await _inventoryService.DecreaseStockAsync(dto.ProductoId, dto.Cantidad, DateTime.UtcNow);
+                if (!decrease.Success)
+                {
+                    await transaction.RollbackAsync();
+                    return BadRequest(decrease.Error);
+                }
             }
 
             var detalle = new DetallePedido
@@ -83,6 +98,10 @@ namespace InventarioAPI.Controllers
 
             _context.DetallesPedidos.Add(detalle);
             await _context.SaveChangesAsync();
+
+            await _context.Entry(detalle)
+                .Reference(d => d.Producto)
+                .LoadAsync();
 
             await transaction.CommitAsync();
 
@@ -131,7 +150,11 @@ namespace InventarioAPI.Controllers
                 ProductoId = detalle.ProductoId,
                 Cantidad = detalle.Cantidad,
                 PrecioUnitario = detalle.PrecioUnitario,
-                Timestamp = detalle.Timestamp
+                Timestamp = detalle.Timestamp,
+                Nombre = detalle.Producto?.Nombre ?? string.Empty,
+                Codigo = detalle.Producto?.Codigo ?? string.Empty,
+                Descripcion = detalle.Producto?.Descripcion ?? string.Empty,
+                Total = detalle.Cantidad * detalle.PrecioUnitario
             };
         }
     }

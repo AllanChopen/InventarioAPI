@@ -23,9 +23,6 @@ namespace InventarioAPI.Swagger
                     var example = new OpenApiObject
                     {
                         ["clienteId"] = new OpenApiInteger(1),
-                        ["fecha"] = new OpenApiInteger(0),
-                        ["estado"] = new OpenApiString("Pendiente"),
-                        ["timestamp"] = new OpenApiString("2026-05-02T22:34:48.192Z"),
                         ["detalles"] = new OpenApiArray
                         {
                             new OpenApiObject
