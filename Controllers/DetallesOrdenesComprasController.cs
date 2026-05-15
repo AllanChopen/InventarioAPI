@@ -20,14 +20,24 @@ namespace InventarioAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<DetalleOrdenCompraDto>>> GetDetallesOrdenesCompras()
         {
-            var detalles = await _context.DetallesOrdenesCompras.ToListAsync();
+            var detalles = await _context.DetallesOrdenesCompras
+                .Include(d => d.Producto)
+                .Include(d => d.Orden)
+                    .ThenInclude(o => o!.Proveedor)
+                .ToListAsync();
+
             return detalles.Select(ToDto).ToList();
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<DetalleOrdenCompraDto>> GetDetalleOrdenCompra(int id)
         {
-            var detalle = await _context.DetallesOrdenesCompras.FindAsync(id);
+            var detalle = await _context.DetallesOrdenesCompras
+                .Include(d => d.Producto)
+                .Include(d => d.Orden)
+                    .ThenInclude(o => o!.Proveedor)
+                .FirstOrDefaultAsync(d => d.Id == id);
+
             if (detalle == null)
             {
                 return NotFound();
@@ -93,10 +103,14 @@ namespace InventarioAPI.Controllers
             {
                 Id = detalle.Id,
                 OrdenId = detalle.OrdenId,
+                ProveedorId = detalle.Orden?.ProveedorId ?? 0,
+                ProveedorNombre = detalle.Orden?.Proveedor?.Nombre ?? string.Empty,
                 ProductoId = detalle.ProductoId,
                 Cantidad = detalle.Cantidad,
                 CostoUnitario = detalle.CostoUnitario,
-                Timestamp = detalle.Timestamp
+                Timestamp = detalle.Timestamp,
+                CodigoProducto = detalle.Producto?.Codigo ?? string.Empty,
+                NombreProducto = detalle.Producto?.Nombre ?? string.Empty
             };
         }
     }

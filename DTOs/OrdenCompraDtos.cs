@@ -6,6 +6,7 @@ namespace InventarioAPI.DTOs
     {
         public int Id { get; set; }
         public int ProveedorId { get; set; }
+        public string ProveedorNombre { get; set; } = string.Empty;
         public DateTime Fecha { get; set; }
         public string Estado { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; }

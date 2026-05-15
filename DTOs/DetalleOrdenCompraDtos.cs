@@ -6,6 +6,8 @@ namespace InventarioAPI.DTOs
     {
         public int Id { get; set; }
         public int OrdenId { get; set; }
+        public int ProveedorId { get; set; }
+        public string ProveedorNombre { get; set; } = string.Empty;
         public int ProductoId { get; set; }
         public int Cantidad { get; set; }
         public decimal CostoUnitario { get; set; }
