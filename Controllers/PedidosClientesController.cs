@@ -55,31 +55,18 @@ namespace InventarioAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<PedidoClienteDto>> PostPedidoCliente([FromBody] PedidoClienteCreateDto dto)
         {
-            if (dto.ClienteId <= 0)
-            {
-                return BadRequest("El cliente es obligatorio.");
-            }
-
             if (dto.Detalles == null || dto.Detalles.Count == 0)
             {
                 return BadRequest("El pedido debe incluir al menos un producto.");
             }
 
-            // Validate client exists
-            var cliente = await _context.Clientes.FindAsync(dto.ClienteId);
-            if (cliente == null)
-            {
-                return BadRequest($"Cliente {dto.ClienteId} no encontrado.");
-            }
-
             await using var transaction = await _context.Database.BeginTransactionAsync();
 
-            var pedidoTimestamp = dto.Timestamp ?? DateTime.UtcNow;
+            var pedidoTimestamp = DateTime.UtcNow;
 
             var pedido = new PedidoCliente
             {
-                ClienteId = dto.ClienteId,
-                // Set Fecha based on timestamp (Unix seconds)
+                ClienteId = null,
                 Fecha = (int)new DateTimeOffset(pedidoTimestamp).ToUnixTimeSeconds(),
                 Estado = "Pendiente",
                 Timestamp = pedidoTimestamp
@@ -188,12 +175,10 @@ namespace InventarioAPI.Controllers
                 return BadRequest("Pedido ya confirmado.");
             }
 
-            // Aggregate required quantities by producto to validate availability
             var requeridos = pedido.Detalles
                 .GroupBy(d => d.ProductoId)
                 .ToDictionary(g => g.Key, g => g.Sum(d => d.Cantidad));
 
-            // Validate availability before making changes
             foreach (var kv in requeridos)
             {
                 var producto = await _context.Productos.FindAsync(kv.Key);
@@ -210,7 +195,6 @@ namespace InventarioAPI.Controllers
 
             await using var transaction = await _context.Database.BeginTransactionAsync();
 
-            // Decrement stock per detalle
             foreach (var detalle in pedido.Detalles)
             {
                 var res = await _inventoryService.DecreaseStockAsync(detalle.ProductoId, detalle.Cantidad, detalle.Timestamp);

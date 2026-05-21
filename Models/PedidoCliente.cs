@@ -13,7 +13,7 @@ namespace InventarioAPI.Models
         public int Id { get; set; }
 
         [Column("cliente_id")]
-        public int ClienteId { get; set; }
+        public int? ClienteId { get; set; }
 
         [Column("fecha")]
         public int Fecha { get; set; }

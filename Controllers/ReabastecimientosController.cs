@@ -121,7 +121,6 @@ namespace InventarioAPI.Controllers
                 .Include(p => p.Categoria)
                 .FirstOrDefaultAsync(p => p.Id == entity.ProductoId);
 
-            // Create OrdenCompra when approving the reabastecimiento
             var proveedorId = entity.ProveedorSugeridoId
                 ?? await _context.Proveedores
                     .Where(p => p.Estado && producto != null && p.CategoriaId == producto.CategoriaId)

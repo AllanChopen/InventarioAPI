@@ -6,7 +6,7 @@ namespace InventarioAPI.DTOs
     public class PedidoClienteDto
     {
         public int Id { get; set; }
-        public int ClienteId { get; set; }
+        public int? ClienteId { get; set; }
         public int Fecha { get; set; }
         public string Estado { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; }
@@ -17,14 +17,12 @@ namespace InventarioAPI.DTOs
 
     public class PedidoClienteCreateDto
     {
-        public int ClienteId { get; set; }
-        public DateTime? Timestamp { get; set; }
         public List<DetallePedidoCreateDto> Detalles { get; set; } = new List<DetallePedidoCreateDto>();
     }
 
     public class PedidoClienteUpdateDto
     {
-        public int ClienteId { get; set; }
+        public int? ClienteId { get; set; }
         public int Fecha { get; set; }
         public string Estado { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; }
