@@ -27,7 +27,6 @@ namespace InventarioAPI.Controllers
         public async Task<ActionResult<IEnumerable<PedidoClienteDto>>> GetPedidosClientes()
         {
             var pedidos = await _context.PedidosClientes
-                .Include(p => p.Cliente)
                 .Include(p => p.Detalles)
                     .ThenInclude(d => d.Producto)
                 .ToListAsync();
@@ -39,7 +38,6 @@ namespace InventarioAPI.Controllers
         public async Task<ActionResult<PedidoClienteDto>> GetPedidoCliente(int id)
         {
             var pedido = await _context.PedidosClientes
-                .Include(p => p.Cliente)
                 .Include(p => p.Detalles)
                     .ThenInclude(d => d.Producto)
                 .FirstOrDefaultAsync(p => p.Id == id);
@@ -66,7 +64,6 @@ namespace InventarioAPI.Controllers
 
             var pedido = new PedidoCliente
             {
-                ClienteId = null,
                 Fecha = (int)new DateTimeOffset(pedidoTimestamp).ToUnixTimeSeconds(),
                 Estado = "Pendiente",
                 Timestamp = pedidoTimestamp
@@ -118,7 +115,6 @@ namespace InventarioAPI.Controllers
             await transaction.CommitAsync();
 
             var pedidoCreado = await _context.PedidosClientes
-                .Include(p => p.Cliente)
                 .Include(p => p.Detalles)
                     .ThenInclude(d => d.Producto)
                 .FirstAsync(p => p.Id == pedido.Id);
@@ -135,7 +131,6 @@ namespace InventarioAPI.Controllers
                 return NotFound();
             }
 
-            pedido.ClienteId = dto.ClienteId;
             pedido.Fecha = dto.Fecha;
             pedido.Estado = dto.Estado;
             pedido.Timestamp = dto.Timestamp;
@@ -273,11 +268,10 @@ namespace InventarioAPI.Controllers
             return new PedidoClienteDto
             {
                 Id = pedido.Id,
-                ClienteId = pedido.ClienteId,
                 Fecha = pedido.Fecha,
                 Estado = pedido.Estado,
                 Timestamp = pedido.Timestamp,
-                ClienteNombre = pedido.Cliente != null ? (pedido.Cliente.Nombre + " " + pedido.Cliente.Apellido) : string.Empty,
+                // Cliente removed
                 Total = total,
                 Detalles = detalles
             };

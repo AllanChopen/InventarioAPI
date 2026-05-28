@@ -12,9 +12,6 @@ namespace InventarioAPI.Models
         [Column("id")]
         public int Id { get; set; }
 
-        [Column("cliente_id")]
-        public int? ClienteId { get; set; }
-
         [Column("fecha")]
         public int Fecha { get; set; }
 
@@ -24,8 +21,7 @@ namespace InventarioAPI.Models
         [Column("timestamp")]
         public DateTime Timestamp { get; set; }
 
-        [ForeignKey(nameof(ClienteId))]
-        public Cliente? Cliente { get; set; }
+        // Cliente removed: pedidos ahora solo contienen detalles con producto y cantidad
 
         public ICollection<DetallePedido> Detalles { get; set; } = new List<DetallePedido>();
     }

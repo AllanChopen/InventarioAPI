@@ -6,11 +6,10 @@ namespace InventarioAPI.DTOs
     public class PedidoClienteDto
     {
         public int Id { get; set; }
-        public int? ClienteId { get; set; }
         public int Fecha { get; set; }
         public string Estado { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; }
-        public string ClienteNombre { get; set; } = string.Empty;
+        // Cliente removed: pedidos no exponen cliente
         public decimal Total { get; set; }
         public List<DetallePedidoDto> Detalles { get; set; } = new List<DetallePedidoDto>();
     }
@@ -22,7 +21,6 @@ namespace InventarioAPI.DTOs
 
     public class PedidoClienteUpdateDto
     {
-        public int? ClienteId { get; set; }
         public int Fecha { get; set; }
         public string Estado { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; }

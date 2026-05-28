@@ -22,7 +22,6 @@ namespace InventarioAPI.Swagger
                 {
                     var example = new OpenApiObject
                     {
-                        ["clienteId"] = new OpenApiInteger(1),
                         ["detalles"] = new OpenApiArray
                         {
                             new OpenApiObject

@@ -30,6 +30,6 @@ namespace InventarioAPI.Models
         [Column("timestamp")]
         public DateTime Timestamp { get; set; }
 
-        public ICollection<PedidoCliente> Pedidos { get; set; } = new List<PedidoCliente>();
+        // Ya no se mantiene la colección de pedidos en el cliente
     }
 }
